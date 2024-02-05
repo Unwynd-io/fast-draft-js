@@ -83,7 +83,9 @@ const MAX_BLOCKS_TO_DISPLAY = 50;
 class DraftEditorContents extends React.Component<Props> {
   constructor(props) {
     super(props);
-   
+    this.state = {
+      currentLazyLoadKey: null
+    }
     this.contentsRef = React.createRef(null);
  }
 
@@ -138,43 +140,64 @@ class DraftEditorContents extends React.Component<Props> {
   }
   
   componentDidMount() {
-    
     // Function to be called when the target div is in the viewport
-    function handleIntersection(entries, observer) {
+    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
+    console.log('[f] componentdidMount, v1.3', {currentBlockMap, props: this.props})
+  }
 
+  componentDidUpdate() {
+    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
+    console.log('[f] componentDidUpdate, ', {currentBlockMap, props: this.props})
+    
+    const handleIntersection = (entries, observer) => {
       console.log('[f] props of intersection', {entries, observer})
 
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           // Do your action here
           console.log('[f] Target div is now in the viewport!', {entry, observer});
+          
+          const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+          this.setState({
+            currentLazyLoadKey: blockKey
+          });
+
           // You can stop observing if needed
           observer.disconnect();
         }
       });
     }
+  
+    // Yurii is going murder me for this... :sweat: yes i know they are currently stacking.. rough playing around..
+    const startObserver = (retry: boolean) => {
+      setTimeout(()  => {
+        // Create an intersection observer with the callback function
+        const observer = new IntersectionObserver(handleIntersection);
+        // Target the div you want to observe
+        
+        let lastChild = this.contentsRef?.current?.lastChild;
+        if(!lastChild) {
+          if(retry) {
+            // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
+            console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
+            return;
+          }
+          return startObserver(true);
+        }
 
-    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
+        const targetTopDiv = this.contentsRef.current.firstChild;
 
-    console.log('[f] componentdidMount, ', {currentBlockMap, props: this.props})
-    
-    // Create an intersection observer with the callback function
-    const observer = new IntersectionObserver(handleIntersection);
-    // Target the div you want to observe
-    const targetDiv = this.contentsRef.current.lastChild;
+        const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
+        const targetBottomDiv = childThreeFromBottom ? childThreeFromBottom : this.contentsRef.current.lastChild;
 
-    // const targetBeforeLast = this.contentsRef.current.lastChild.previousSibling;
+        console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
 
-    console.log('[f] targetDivs', {targetDiv});
-
-    // Start observing the target div
-    observer.observe(targetDiv);
-    // observer.observe(targetBeforeLast);
-  }
-
-  componentDidUpdate() {
-    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
-    console.log('[f] componentDidUpdate, ', {currentBlockMap, props: this.props})
+        // Start observing the target div
+        observer.observe(targetTopDiv);
+        observer.observe(targetBottomDiv);
+      }, 1000);
+    }
+    startObserver(false);
   }
 
   render(): React.Node {
@@ -189,6 +212,8 @@ class DraftEditorContents extends React.Component<Props> {
       preventScroll,
       textDirectionality,
     } = this.props;
+
+    const { currentLazyLoadKey } = this.state;
 
     const content = editorState.getCurrentContent();
     const selection = editorState.getSelection();
@@ -235,8 +260,7 @@ class DraftEditorContents extends React.Component<Props> {
         tree: editorState.getBlockTree(key),
       };
 
-      const configForType =
-        blockRenderMap.get(blockType) || blockRenderMap.get('unstyled');
+      const configForType = blockRenderMap.get(blockType) || blockRenderMap.get('unstyled');
       const wrapperTemplate = configForType.wrapper;
 
       const Element =
@@ -301,10 +325,23 @@ class DraftEditorContents extends React.Component<Props> {
       lastWrapperTemplate = wrapperTemplate;
     }
 
+    console.log('alex was here :)')
+
+    // Get 25 blocks above and below currentLazyLoadKey
+    let lazyLoadBlocks = [...processedBlocks];
+    if(currentLazyLoadKey) {
+      const currentIndex = processedBlocks.findIndex(block => block.key === currentLazyLoadKey);
+      const start = currentIndex - 25 > 0 ? currentIndex - 25 : 0;
+      const end = currentIndex + 25 < processedBlocks.length ? currentIndex + 25 : processedBlocks.length;
+      lazyLoadBlocks = processedBlocks.slice(start, end);
+    }
+
+    console.log('The Lazy Block Loading Key:', currentLazyLoadKey)
+
     // Group contiguous runs of blocks that have the same wrapperTemplate
     const outputBlocks = [];
-    for (let ii = 0; ii < processedBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY; ) {
-      const info: any = processedBlocks[ii];
+    for (let ii = 0; ii < lazyLoadBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY;) {
+      const info: any = lazyLoadBlocks[ii];
 
       // console.log('[f] render inside checkubg - info', {info, ii});
 
@@ -313,11 +350,11 @@ class DraftEditorContents extends React.Component<Props> {
       if (info.wrapperTemplate) {
         const blocks = [];
         do {
-          blocks.push(processedBlocks[ii].block);
+          blocks.push(lazyLoadBlocks[ii].block);
           ii++;
         } while (
-          ii < processedBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY &&
-          processedBlocks[ii].wrapperTemplate === info.wrapperTemplate
+          ii < lazyLoadBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY &&
+          lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
         );
         const wrapperElement = React.cloneElement(
           info.wrapperTemplate,
@@ -338,8 +375,7 @@ class DraftEditorContents extends React.Component<Props> {
 
       if (block) {
         outputBlocks.push(block);
-
-        if (ii === processedBlocks.length || ii === MAX_BLOCKS_TO_DISPLAY) {
+        if (ii === processedBlocks.length || ii === lazyLoadBlocks.length || ii === MAX_BLOCKS_TO_DISPLAY) {
           console.log('[f] LAST BLOCK - add event listenr to block', {block});
         }
       }
