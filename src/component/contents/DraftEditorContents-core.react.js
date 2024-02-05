@@ -68,6 +68,9 @@ const getListItemClasses = (
   });
 };
 
+const MAX_BLOCKS_TO_DISPLAY = 50;
+
+
 /**
  * `DraftEditorContents` is the container component for all block components
  * rendered for a `DraftEditor`. It is optimized to aggressively avoid
@@ -78,7 +81,16 @@ const getListItemClasses = (
  * the contents of the editor.
  */
 class DraftEditorContents extends React.Component<Props> {
+  constructor(props) {
+    super(props);
+   
+    this.contentsRef = React.createRef(null);
+ }
+
   shouldComponentUpdate(nextProps: Props): boolean {
+
+    console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {nextProps, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+
     const prevEditorState = this.props.editorState;
     const nextEditorState = nextProps.editorState;
 
@@ -123,6 +135,46 @@ class DraftEditorContents extends React.Component<Props> {
       prevDecorator !== nextDecorator ||
       nextEditorState.mustForceSelection()
     );
+  }
+  
+  componentDidMount() {
+    
+    // Function to be called when the target div is in the viewport
+    function handleIntersection(entries, observer) {
+
+      console.log('[f] props of intersection', {entries, observer})
+
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Do your action here
+          console.log('[f] Target div is now in the viewport!', {entry, observer});
+          // You can stop observing if needed
+          observer.disconnect();
+        }
+      });
+    }
+
+    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
+
+    console.log('[f] componentdidMount, ', {currentBlockMap, props: this.props})
+    
+    // Create an intersection observer with the callback function
+    const observer = new IntersectionObserver(handleIntersection);
+    // Target the div you want to observe
+    const targetDiv = this.contentsRef.current.lastChild;
+
+    // const targetBeforeLast = this.contentsRef.current.lastChild.previousSibling;
+
+    console.log('[f] targetDivs', {targetDiv});
+
+    // Start observing the target div
+    observer.observe(targetDiv);
+    // observer.observe(targetBeforeLast);
+  }
+
+  componentDidUpdate() {
+    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
+    console.log('[f] componentDidUpdate, ', {currentBlockMap, props: this.props})
   }
 
   render(): React.Node {
@@ -251,15 +303,20 @@ class DraftEditorContents extends React.Component<Props> {
 
     // Group contiguous runs of blocks that have the same wrapperTemplate
     const outputBlocks = [];
-    for (let ii = 0; ii < processedBlocks.length; ) {
+    for (let ii = 0; ii < processedBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY; ) {
       const info: any = processedBlocks[ii];
+
+      // console.log('[f] render inside checkubg - info', {info, ii});
+
+      let block = null;
+
       if (info.wrapperTemplate) {
         const blocks = [];
         do {
           blocks.push(processedBlocks[ii].block);
           ii++;
         } while (
-          ii < processedBlocks.length &&
+          ii < processedBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY &&
           processedBlocks[ii].wrapperTemplate === info.wrapperTemplate
         );
         const wrapperElement = React.cloneElement(
@@ -270,14 +327,27 @@ class DraftEditorContents extends React.Component<Props> {
           },
           blocks,
         );
-        outputBlocks.push(wrapperElement);
+        // outputBlocks.push(wrapperElement);
+
+        block = wrapperElement;
       } else {
-        outputBlocks.push(info.block);
+        // outputBlocks.push(info.block);
+        block = info.block;
         ii++;
+      }
+
+      if (block) {
+        outputBlocks.push(block);
+
+        if (ii === processedBlocks.length || ii === MAX_BLOCKS_TO_DISPLAY) {
+          console.log('[f] LAST BLOCK - add event listenr to block', {block});
+        }
       }
     }
 
-    return <div data-contents="true">{outputBlocks}</div>;
+    console.log('[f] render inside - props', {outputBlocks});
+
+    return <div data-contents="true" ref={this.contentsRef}>{outputBlocks}</div>;
   }
 }
 
