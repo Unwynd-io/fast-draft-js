@@ -90,6 +90,21 @@ const getHandleIntersection = (callback) => (entries, observer) => {
   });
 }
 
+const getFirstDraftBlock = (element) => {
+
+  if (element?.dataset?.offsetKey) {
+    return element;
+  }
+
+  const childrenCount = element?.children?.length;
+  
+  if (childrenCount > 0) {
+    return getFirstDraftBlock(element?.children?.[0]);
+  }
+
+  return null;
+}
+
 
 /**
  * `DraftEditorContents` is the container component for all block components
@@ -247,8 +262,8 @@ class DraftEditorContents extends React.Component<Props> {
 
 
     if (!this.observerLazyBottom.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
-      let firstChild = this.contentsRef?.current?.firstChild;
-      let lastChild = this.contentsRef?.current?.lastChild;
+      let firstChild = getFirstDraftBlock(this.contentsRef?.current?.firstChild);
+      let lastChild = getFirstDraftBlock(this.contentsRef?.current?.lastChild);
 
       console.log('[f] %c OBSERVING NEW', 'color: #532523', {
         wasKey: prevState.currentLazyLoadKey,
