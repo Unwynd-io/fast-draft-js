@@ -89,9 +89,9 @@ class DraftEditorContents extends React.Component<Props> {
     this.contentsRef = React.createRef(null);
  }
 
-  shouldComponentUpdate(nextProps: Props): boolean {
+  shouldComponentUpdate(nextProps: Props, nextState): boolean {
 
-    console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {nextProps, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+    console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {nextState, currentState: this.state, shouldUpdateObserver: this.state.currentLazyLoadKey !== nextState.currentLazyLoadKey, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
 
     const prevEditorState = this.props.editorState;
     const nextEditorState = nextProps.editorState;
@@ -127,6 +127,8 @@ class DraftEditorContents extends React.Component<Props> {
       return false;
     }
 
+    const prevState = this.state;
+
     const prevContent = prevEditorState.getCurrentContent();
     const nextContent = nextEditorState.getCurrentContent();
     const prevDecorator = prevEditorState.getDecorator();
@@ -135,7 +137,8 @@ class DraftEditorContents extends React.Component<Props> {
       wasComposing !== nowComposing ||
       prevContent !== nextContent ||
       prevDecorator !== nextDecorator ||
-      nextEditorState.mustForceSelection()
+      nextEditorState.mustForceSelection() 
+      // || prevState.currentLazyLoadKey !== nextState.currentLazyLoadKey
     );
   }
   
@@ -145,25 +148,23 @@ class DraftEditorContents extends React.Component<Props> {
     console.log('[f] componentdidMount, v1.3', {currentBlockMap, props: this.props})
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps, prevState) {
+    const currentState = this.state;
     const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
-    console.log('[f] componentDidUpdate, ', {currentBlockMap, props: this.props})
+    console.log('[f] componentDidUpdate, ', {currentBlockMap, currentProps: this.props, currentState, prevProps, prevState })
     
     const handleIntersection = (entries, observer) => {
       console.log('[f] props of intersection', {entries, observer})
 
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          // Do your action here
-          console.log('[f] Target div is now in the viewport!', {entry, observer});
-          
           const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+          console.log('[f] Target div is now in the viewport!', {entry, observer, blockKey});
+          observer.disconnect();
+
           this.setState({
             currentLazyLoadKey: blockKey
           });
-
-          // You can stop observing if needed
-          observer.disconnect();
         }
       });
     }
@@ -171,11 +172,19 @@ class DraftEditorContents extends React.Component<Props> {
     // :sweat: yes i know they are currently stacking.. rough playing around..
     const startObserver = (retry: boolean) => {
       // Create an intersection observer with the callback function
-      const observer = new IntersectionObserver(handleIntersection);
+      const observerTop = new IntersectionObserver(handleIntersection);
+      const observerBottom = new IntersectionObserver(handleIntersection);
       // Target the div you want to observe
       
       let lastChild = this.contentsRef?.current?.lastChild;
       if(!lastChild) {
+
+        console.log('[f] NO LAST CHILD - contents: ', {
+          contentsBox: this.contentsRef?.current,
+          children: this.contentsRef?.current?.children,
+          childrenCount: this.contentsRef?.current?.children?.length
+        })
+
         if(retry) {
           // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
           console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
@@ -183,7 +192,6 @@ class DraftEditorContents extends React.Component<Props> {
         }
         return setTimeout(() => startObserver(true), 1000)
       }
-
       const targetTopDiv = this.contentsRef.current.firstChild;
 
       const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
@@ -192,10 +200,18 @@ class DraftEditorContents extends React.Component<Props> {
       console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
 
       // Start observing the target div
-      observer.observe(targetTopDiv);
-      observer.observe(targetBottomDiv);
+      observerTop.observe(targetTopDiv);
+      observerBottom.observe(targetBottomDiv);
     }
-    startObserver(false);
+
+
+    if (prevState.currentLazyLoadKey === null || currentState.currentLazyLoadKey === null || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
+      console.log('[f] %c CHANGED KEY, NOW WE OBSERVE', 'color: #532523', {
+        wasKey: prevState.currentLazyLoadKey,
+        nowKey: currentState.currentLazyLoadKey
+      })
+      startObserver(false);
+    }
   }
 
   render(): React.Node {
