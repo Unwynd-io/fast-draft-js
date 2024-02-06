@@ -168,34 +168,32 @@ class DraftEditorContents extends React.Component<Props> {
       });
     }
   
-    // Yurii is going murder me for this... :sweat: yes i know they are currently stacking.. rough playing around..
+    // :sweat: yes i know they are currently stacking.. rough playing around..
     const startObserver = (retry: boolean) => {
-      setTimeout(()  => {
-        // Create an intersection observer with the callback function
-        const observer = new IntersectionObserver(handleIntersection);
-        // Target the div you want to observe
-        
-        let lastChild = this.contentsRef?.current?.lastChild;
-        if(!lastChild) {
-          if(retry) {
-            // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
-            console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
-            return;
-          }
-          return startObserver(true);
+      // Create an intersection observer with the callback function
+      const observer = new IntersectionObserver(handleIntersection);
+      // Target the div you want to observe
+      
+      let lastChild = this.contentsRef?.current?.lastChild;
+      if(!lastChild) {
+        if(retry) {
+          // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
+          console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
+          return;
         }
+        return setTimeout(() => startObserver(true), 1000)
+      }
 
-        const targetTopDiv = this.contentsRef.current.firstChild;
+      const targetTopDiv = this.contentsRef.current.firstChild;
 
-        const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
-        const targetBottomDiv = childThreeFromBottom ? childThreeFromBottom : this.contentsRef.current.lastChild;
+      const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
+      const targetBottomDiv = childThreeFromBottom ? childThreeFromBottom : this.contentsRef.current.lastChild;
 
-        console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
+      console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
 
-        // Start observing the target div
-        observer.observe(targetTopDiv);
-        observer.observe(targetBottomDiv);
-      }, 1000);
+      // Start observing the target div
+      observer.observe(targetTopDiv);
+      observer.observe(targetBottomDiv);
     }
     startObserver(false);
   }
