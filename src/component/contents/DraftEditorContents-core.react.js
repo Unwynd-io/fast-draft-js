@@ -90,7 +90,7 @@ const getHandleIntersection = (callback) => (entries, observer) => {
   });
 }
 
-const getFirstDraftBlock = (element) => {
+const getFirstDraftBlock = (element, isFirst = true) => {
 
   if (element?.dataset?.offsetKey) {
     return element;
@@ -99,7 +99,8 @@ const getFirstDraftBlock = (element) => {
   const childrenCount = element?.children?.length;
   
   if (childrenCount > 0) {
-    return getFirstDraftBlock(element?.children?.[0]);
+    const elementToGet = isFirst ? 0 : childrenCount - 1;
+    return getFirstDraftBlock(element?.children?.[elementToGet]);
   }
 
   return null;
@@ -261,9 +262,9 @@ class DraftEditorContents extends React.Component<Props> {
     // }
 
 
-    if (!this.observerLazyBottom.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
-      let firstChild = getFirstDraftBlock(this.contentsRef?.current?.firstChild);
-      let lastChild = getFirstDraftBlock(this.contentsRef?.current?.lastChild);
+    if (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
+      let firstChild = getFirstDraftBlock(this.contentsRef?.current?.firstChild, true);
+      let lastChild = getFirstDraftBlock(this.contentsRef?.current?.lastChild, false);
 
       console.log('[f] %c OBSERVING NEW', 'color: #532523', {
         wasKey: prevState.currentLazyLoadKey,
@@ -451,16 +452,36 @@ class DraftEditorContents extends React.Component<Props> {
       lastWrapperTemplate = wrapperTemplate;
     }
 
-    console.log('alex was here :)')
-
     // Get 25 blocks above and below currentLazyLoadKey
     let lazyLoadBlocks = [...processedBlocks];
     if(currentLazyLoadKey) {
 
       const currentIndex = processedBlocks.findIndex(block => block.key === currentLazyLoadKey);
-      // TODO: redo calcualtion
-      const start = currentIndex - 25 > 0 ? currentIndex - 25 : 0;
-      const end = currentIndex + 25 < processedBlocks.length ? currentIndex + 25 : processedBlocks.length;
+
+      const BLOCK_RANGE = Math.floor(MAX_BLOCKS_TO_DISPLAY / 2);
+
+      let start = currentIndex - BLOCK_RANGE;
+      let end = currentIndex + BLOCK_RANGE;
+
+      let difference = 0;
+
+      if (start < 0) {
+        difference = Math.abs(start);
+        start = 0;
+        end += difference;
+      }
+
+      if (end > processedBlocks.length - 1) {
+        end = processedBlocks.length - 1;
+        start = end - MAX_BLOCKS_TO_DISPLAY;
+
+        if (start < 0) {
+          start = 0;
+        }
+      }
+
+      console.log('[f] calc lazy load blocks', {start, end, difference});
+
       lazyLoadBlocks = processedBlocks.slice(start, end);
 
       // TODO: try and leave first and last block in the array
