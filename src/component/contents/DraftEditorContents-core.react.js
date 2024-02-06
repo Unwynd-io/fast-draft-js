@@ -71,6 +71,26 @@ const getListItemClasses = (
 const MAX_BLOCKS_TO_DISPLAY = 50;
 
 
+const getHandleIntersection = (callback) => (entries, observer) => {
+  console.log('[f] props of intersection', {entries, observer})
+
+  entries.forEach(entry => {
+
+    callback(entry, observer);
+    // if (entry.isIntersecting) {
+    //   // const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+    //   // console.log('[f] Target div is now in the viewport!', {entry, observer, blockKey});
+    //   callback();
+    //   observer.disconnect();
+
+    //   // this.setState({
+    //   //   currentLazyLoadKey: blockKey
+    //   // });
+    // }
+  });
+}
+
+
 /**
  * `DraftEditorContents` is the container component for all block components
  * rendered for a `DraftEditor`. It is optimized to aggressively avoid
@@ -87,6 +107,12 @@ class DraftEditorContents extends React.Component<Props> {
       currentLazyLoadKey: null
     }
     this.contentsRef = React.createRef(null);
+
+    this.observerLazyTop = React.createRef(null);
+    this.observerLazyBottom = React.createRef(null);
+
+    this.observedElmTop = React.createRef(null);
+    this.observedElmBottom = React.createRef(null);
  }
 
   shouldComponentUpdate(nextProps: Props, nextState): boolean {
@@ -115,30 +141,45 @@ class DraftEditorContents extends React.Component<Props> {
 
     const wasComposing = prevEditorState.isInCompositionMode();
     const nowComposing = nextEditorState.isInCompositionMode();
+    
+    const prevState = this.state;
+    const stateChanged = prevState.currentLazyLoadKey !== nextState.currentLazyLoadKey;
 
     // If the state is unchanged or we're currently rendering a natively
     // rendered state, there's nothing new to be done.
     if (
-      prevEditorState === nextEditorState ||
-      (nextNativeContent !== null &&
-        nextEditorState.getCurrentContent() === nextNativeContent) ||
-      (wasComposing && nowComposing)
+      !stateChanged && 
+      (prevEditorState === nextEditorState ||
+        (nextNativeContent !== null &&
+          nextEditorState.getCurrentContent() === nextNativeContent) ||
+        (wasComposing && nowComposing))
     ) {
+      console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
       return false;
     }
-
-    const prevState = this.state;
 
     const prevContent = prevEditorState.getCurrentContent();
     const nextContent = nextEditorState.getCurrentContent();
     const prevDecorator = prevEditorState.getDecorator();
     const nextDecorator = nextEditorState.getDecorator();
+
+    console.log('[f] SHOULD UPDATE? FINAL STEP', {
+      result: wasComposing !== nowComposing ||
+      prevContent !== nextContent ||
+      prevDecorator !== nextDecorator ||
+      nextEditorState.mustForceSelection() || 
+      stateChanged,
+
+      currentState: this.state,
+      nextState,
+    })
+
     return (
       wasComposing !== nowComposing ||
       prevContent !== nextContent ||
       prevDecorator !== nextDecorator ||
-      nextEditorState.mustForceSelection() 
-      // || prevState.currentLazyLoadKey !== nextState.currentLazyLoadKey
+      nextEditorState.mustForceSelection() ||
+      stateChanged
     );
   }
   
@@ -151,66 +192,122 @@ class DraftEditorContents extends React.Component<Props> {
   componentDidUpdate(prevProps, prevState) {
     const currentState = this.state;
     const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
-    console.log('[f] componentDidUpdate, ', {currentBlockMap, currentProps: this.props, currentState, prevProps, prevState })
+    console.log('[f] %c componentDidUpdate, ', 'color: #123153', {currentBlockMap, currentProps: this.props, currentState, prevProps, prevState, topElm: this.observedElmTop.current, bottomElm: this.observedElmBottom.current, observerTop: this.observerLazyTop.current, observerBottom: this.observerLazyBottom.current,
+    })
     
-    const handleIntersection = (entries, observer) => {
-      console.log('[f] props of intersection', {entries, observer})
+    // const handleIntersection = (entries, observer) => {
+    //   console.log('[f] props of intersection', {entries, observer})
 
-      entries.forEach(entry => {
+    //   entries.forEach(entry => {
+    //     if (entry.isIntersecting) {
+    //       const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+    //       console.log('[f] Target div is now in the viewport!', {entry, observer, blockKey});
+    //       observer.disconnect();
+
+    //       this.setState({
+    //         currentLazyLoadKey: blockKey
+    //       });
+    //     }
+    //   });
+    // }
+  
+    // const startObserver = (retry: boolean) => {
+    //   // Create an intersection observer with the callback function
+    //   const observerTop = new IntersectionObserver(handleIntersection);
+    //   const observerBottom = new IntersectionObserver(handleIntersection);
+    //   // Target the div you want to observe
+      
+    //   let lastChild = this.contentsRef?.current?.lastChild;
+    //   if(!lastChild) {
+
+    //     console.log('[f] NO LAST CHILD - contents: ', {
+    //       contentsBox: this.contentsRef?.current,
+    //       children: this.contentsRef?.current?.children,
+    //       childrenCount: this.contentsRef?.current?.children?.length
+    //     })
+
+    //     if(retry) {
+    //       // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
+    //       console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
+    //       return;
+    //     }
+    //     return setTimeout(() => startObserver(true), 1000)
+    //   }
+    //   const targetTopDiv = this.contentsRef.current.firstChild;
+
+    //   const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
+    //   const targetBottomDiv = childThreeFromBottom ? childThreeFromBottom : this.contentsRef.current.lastChild;
+
+    //   console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
+
+    //   // Start observing the target div
+    //   observerTop.observe(targetTopDiv);
+    //   observerBottom.observe(targetBottomDiv);
+    // }
+
+
+    if (!this.observerLazyBottom.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
+      let firstChild = this.contentsRef?.current?.firstChild;
+      let lastChild = this.contentsRef?.current?.lastChild;
+
+      console.log('[f] %c OBSERVING NEW', 'color: #532523', {
+        wasKey: prevState.currentLazyLoadKey,
+        nowKey: currentState.currentLazyLoadKey,
+        observerTop: this.observerLazyTop.current,
+        observerBottom: this.observerLazyBottom.current,
+        firstChild,
+        lastChild
+      })
+      // startObserver(false);
+
+      if (this.observerLazyTop.current) {
+        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyTop.current,
+        topElm: this.observedElmTop.current,
+        })
+        this.observerLazyTop.current.unobserve(this.observedElmTop.current);
+      }
+
+      if (this.observerLazyBottom.current) {
+        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyBottom.current,
+        bottomElm: this.observedElmBottom.current
+        })
+        // this.observerLazyBottom.current.unobserve(this.observedElmTop.current);
+        this.observerLazyBottom.current.unobserve(this.observedElmBottom.current);
+      }
+
+      const observerCallback = (name) => getHandleIntersection((entry, observer) => {
+        console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+          wasKey: prevState.currentLazyLoadKey,
+          nowKey: currentState.currentLazyLoadKey,
+          entry, 
+          observer,
+          lastChild,
+          entryTarget: entry?.target,
+          entryTargetDataset: entry?.target?.dataset,
+        });
+
         if (entry.isIntersecting) {
-          const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-          console.log('[f] Target div is now in the viewport!', {entry, observer, blockKey});
           observer.disconnect();
-
+          const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+          console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+  
           this.setState({
             currentLazyLoadKey: blockKey
           });
         }
-      });
-    }
-  
-    // :sweat: yes i know they are currently stacking.. rough playing around..
-    const startObserver = (retry: boolean) => {
-      // Create an intersection observer with the callback function
-      const observerTop = new IntersectionObserver(handleIntersection);
-      const observerBottom = new IntersectionObserver(handleIntersection);
-      // Target the div you want to observe
-      
-      let lastChild = this.contentsRef?.current?.lastChild;
-      if(!lastChild) {
-
-        console.log('[f] NO LAST CHILD - contents: ', {
-          contentsBox: this.contentsRef?.current,
-          children: this.contentsRef?.current?.children,
-          childrenCount: this.contentsRef?.current?.children?.length
-        })
-
-        if(retry) {
-          // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
-          console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
-          return;
-        }
-        return setTimeout(() => startObserver(true), 1000)
-      }
-      const targetTopDiv = this.contentsRef.current.firstChild;
-
-      const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
-      const targetBottomDiv = childThreeFromBottom ? childThreeFromBottom : this.contentsRef.current.lastChild;
-
-      console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
-
-      // Start observing the target div
-      observerTop.observe(targetTopDiv);
-      observerBottom.observe(targetBottomDiv);
-    }
-
-
-    if (prevState.currentLazyLoadKey === null || currentState.currentLazyLoadKey === null || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
-      console.log('[f] %c CHANGED KEY, NOW WE OBSERVE', 'color: #532523', {
-        wasKey: prevState.currentLazyLoadKey,
-        nowKey: currentState.currentLazyLoadKey
       })
-      startObserver(false);
+
+      this.observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
+      this.observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
+
+      this.observedElmTop.current = firstChild;
+      this.observedElmBottom.current = lastChild;
+
+      this.observerLazyTop.current.observe(this.observedElmTop.current);
+      // this.observerLazyBottom.current.observe(this.observedElmTop.current);
+      this.observerLazyBottom.current.observe(this.observedElmBottom.current);
+
+      console.log('[f] AFTER OBSERVER INIT', {observerBottom: this.observerLazyBottom.current, obsererTop: this.observerLazyTop.current, topElm: this.observedElmTop.current, bottomElm: this.observedElmBottom.current})
     }
   }
 
@@ -344,13 +441,19 @@ class DraftEditorContents extends React.Component<Props> {
     // Get 25 blocks above and below currentLazyLoadKey
     let lazyLoadBlocks = [...processedBlocks];
     if(currentLazyLoadKey) {
+
       const currentIndex = processedBlocks.findIndex(block => block.key === currentLazyLoadKey);
+      // TODO: redo calcualtion
       const start = currentIndex - 25 > 0 ? currentIndex - 25 : 0;
       const end = currentIndex + 25 < processedBlocks.length ? currentIndex + 25 : processedBlocks.length;
       lazyLoadBlocks = processedBlocks.slice(start, end);
+
+      // TODO: try and leave first and last block in the array
+      // TODO: try "display: none" instead of removing blocks from container
+      // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
     }
 
-    console.log('The Lazy Block Loading Key:', currentLazyLoadKey)
+    console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey)
 
     // Group contiguous runs of blocks that have the same wrapperTemplate
     const outputBlocks = [];
