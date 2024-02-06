@@ -91,7 +91,6 @@ const getHandleIntersection = (callback) => (entries, observer) => {
 }
 
 const getFirstDraftBlock = (element, isFirst = true) => {
-
   if (element?.dataset?.offsetKey) {
     return element;
   }
@@ -275,6 +274,11 @@ class DraftEditorContents extends React.Component<Props> {
         lastChild
       })
       // startObserver(false);
+
+      if(!firstChild || !lastChild) {
+        console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
+        return;
+      }
 
       if (this.observerLazyTop.current) {
         console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyTop.current,
