@@ -238,113 +238,475 @@ const getLazyLoadedBlocks = ({editorState, blocks, initialBlockKey  }) => {
  * (for instance, ARIA props) must be allowed to update without affecting
  * the contents of the editor.
  */
-class DraftEditorContents extends React.Component<Props> {
-  constructor(props) {
-    super(props);
-    this.state = {
-      currentLazyLoadKey: null,
-      // shouldRecalculateLazyLoad: false,
-    }
-    this.contentsRef = React.createRef(null);
+// class DraftEditorContents extends React.Component<Props> {
+//   constructor(props) {
+//     super(props);
+//     this.state = {
+//       currentLazyLoadKey: null,
+//       // shouldRecalculateLazyLoad: false,
+//     }
+//     this.contentsRef = React.createRef(null);
 
-    // Lazy load observers
-    this.observerLazyTop = React.createRef(null);
-    this.observerLazyBottom = React.createRef(null);
-    this.observedElmTop = React.createRef(null);
-    this.observedElmBottom = React.createRef(null);
- }
+//     // Lazy load observers
+//     this.observerLazyTop = React.createRef(null);
+//     this.observerLazyBottom = React.createRef(null);
+//     this.observedElmTop = React.createRef(null);
+//     this.observedElmBottom = React.createRef(null);
+//  }
 
-  shouldComponentUpdate(nextProps: Props, nextState): boolean {
+//   // shouldComponentUpdate(nextProps: Props, nextState): boolean {
 
-    console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {nextState, currentState: this.state, shouldUpdateObserver: this.state.currentLazyLoadKey !== nextState.currentLazyLoadKey, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+//   //   console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {nextState, currentState: this.state, shouldUpdateObserver: this.state.currentLazyLoadKey !== nextState.currentLazyLoadKey, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
 
-    const prevEditorState = this.props.editorState;
-    const nextEditorState = nextProps.editorState;
+//   //   const prevEditorState = this.props.editorState;
+//   //   const nextEditorState = nextProps.editorState;
 
-    const prevDirectionMap = prevEditorState.getDirectionMap();
-    const nextDirectionMap = nextEditorState.getDirectionMap();
+//   //   const prevDirectionMap = prevEditorState.getDirectionMap();
+//   //   const nextDirectionMap = nextEditorState.getDirectionMap();
 
-    // Text direction has changed for one or more blocks. We must re-render.
-    if (prevDirectionMap !== nextDirectionMap) {
-      return true;
-    }
+//   //   // Text direction has changed for one or more blocks. We must re-render.
+//   //   if (prevDirectionMap !== nextDirectionMap) {
+//   //     return true;
+//   //   }
 
-    const didHaveFocus = prevEditorState.getSelection().getHasFocus();
-    const nowHasFocus = nextEditorState.getSelection().getHasFocus();
+//   //   const didHaveFocus = prevEditorState.getSelection().getHasFocus();
+//   //   const nowHasFocus = nextEditorState.getSelection().getHasFocus();
 
-    if (didHaveFocus !== nowHasFocus) {
-      return true;
-    }
+//   //   if (didHaveFocus !== nowHasFocus) {
+//   //     return true;
+//   //   }
 
-    const nextNativeContent = nextEditorState.getNativelyRenderedContent();
+//   //   const nextNativeContent = nextEditorState.getNativelyRenderedContent();
 
-    const wasComposing = prevEditorState.isInCompositionMode();
-    const nowComposing = nextEditorState.isInCompositionMode();
+//   //   const wasComposing = prevEditorState.isInCompositionMode();
+//   //   const nowComposing = nextEditorState.isInCompositionMode();
     
-    const prevState = this.state;
-    const stateChanged = prevState !== nextState;
+//   //   const prevState = this.state;
+//   //   const stateChanged = prevState !== nextState;
 
-    // If the state is unchanged or we're currently rendering a natively
-    // rendered state, there's nothing new to be done.
-    if (
-      !stateChanged && 
-      (prevEditorState === nextEditorState ||
-        (nextNativeContent !== null &&
-          nextEditorState.getCurrentContent() === nextNativeContent) ||
-        (wasComposing && nowComposing))
-    ) {
-      console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
-      return false;
-    }
+//   //   // If the state is unchanged or we're currently rendering a natively
+//   //   // rendered state, there's nothing new to be done.
+//   //   if (
+//   //     !stateChanged && 
+//   //     (prevEditorState === nextEditorState ||
+//   //       (nextNativeContent !== null &&
+//   //         nextEditorState.getCurrentContent() === nextNativeContent) ||
+//   //       (wasComposing && nowComposing))
+//   //   ) {
+//   //     console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
+//   //     return false;
+//   //   }
 
-    const prevContent = prevEditorState.getCurrentContent();
-    const nextContent = nextEditorState.getCurrentContent();
-    const prevDecorator = prevEditorState.getDecorator();
-    const nextDecorator = nextEditorState.getDecorator();
+//   //   const prevContent = prevEditorState.getCurrentContent();
+//   //   const nextContent = nextEditorState.getCurrentContent();
+//   //   const prevDecorator = prevEditorState.getDecorator();
+//   //   const nextDecorator = nextEditorState.getDecorator();
 
-    console.log('[f] SHOULD UPDATE? FINAL STEP', {
-      result: wasComposing !== nowComposing ||
-      prevContent !== nextContent ||
-      prevDecorator !== nextDecorator ||
-      nextEditorState.mustForceSelection() || 
-      stateChanged,
+//   //   console.log('[f] SHOULD UPDATE? FINAL STEP', {
+//   //     result: wasComposing !== nowComposing ||
+//   //     prevContent !== nextContent ||
+//   //     prevDecorator !== nextDecorator ||
+//   //     nextEditorState.mustForceSelection() || 
+//   //     stateChanged,
 
-      currentState: this.state,
-      nextState,
-    })
+//   //     currentState: this.state,
+//   //     nextState,
+//   //   })
 
-    return (
-      wasComposing !== nowComposing ||
-      prevContent !== nextContent ||
-      prevDecorator !== nextDecorator ||
-      nextEditorState.mustForceSelection() ||
-      stateChanged
-    );
-  }
+//   //   return (
+//   //     wasComposing !== nowComposing ||
+//   //     prevContent !== nextContent ||
+//   //     prevDecorator !== nextDecorator ||
+//   //     nextEditorState.mustForceSelection() ||
+//   //     stateChanged
+//   //   );
+//   // }
   
-  // componentDidMount() {
-  //   // Function to be called when the target div is in the viewport
-  //   const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
-  //   console.log('[f] componentdidMount, v1.3', {currentBlockMap, props: this.props})
-  // }
+//   // componentDidMount() {
+//   //   // Function to be called when the target div is in the viewport
+//   //   const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
+//   //   console.log('[f] componentdidMount, v1.3', {currentBlockMap, props: this.props})
+//   // }
 
-  componentDidUpdate(prevProps, prevState) {
-    const currentState = this.state;
-    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap();
+//   // componentDidUpdate(prevProps, prevState) {
+//   //   const currentState = this.state;
+//   //   const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap();
     
+//   //   const shouldLazyLoad = currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
+//   //   console.log('[f] %c componentDidUpdate, ', 'color: #123153', {
+//   //     thisState: this.state,
+//   //     shouldLazyLoad,
+//   //     currentBlockMapArr: currentBlockMap.toArray(),
+//   //     currentProps: this.props,
+//   //     currentState,
+//   //     prevProps,
+//   //     prevState,
+//   //     topElm: this.observedElmTop.current,
+//   //     bottomElm: this.observedElmBottom.current,
+//   //     observerTop: this.observerLazyTop.current,
+//   //     observerBottom: this.observerLazyBottom.current,
+//   //   })
+
+//   //   // TODO: improve performance on state change when we don't need to recalculate lazyBlocks
+//   //   // if (this.state.shouldRecalculateLazyLoad) {
+//   //   //   this.setState({...this.state, shouldRecalculateLazyLoad: false});
+//   //   // } else 
+    
+//   //   if (shouldLazyLoad && (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey)) {
+//   //     // let firstChild = getNextSibling(getFirstDraftBlock(this.contentsRef?.current?.firstChild, true), LAZY_LOAD_OFFSET);
+      
+//   //     let firstChild = getNextSibling(this.contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+//   //     let lastChild = getPreviousSibling(this.contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+
+//   //     console.log('[f] %c OBSERVING NEW', 'color: #532523', {
+//   //       wasKey: prevState.currentLazyLoadKey,
+//   //       nowKey: currentState.currentLazyLoadKey,
+//   //       observerTop: this.observerLazyTop.current,
+//   //       observerBottom: this.observerLazyBottom.current,
+//   //       firstChild,
+//   //       lastChild
+//   //     })
+//   //     // startObserver(false);
+
+//   //     if(!firstChild || !lastChild) {
+//   //       console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
+//   //       return;
+//   //     }
+
+//   //     if (this.observerLazyTop.current) {
+//   //       console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyTop.current,
+//   //       topElm: this.observedElmTop.current,
+//   //       })
+//   //       this.observerLazyTop.current.unobserve(this.observedElmTop.current);
+//   //     }
+
+//   //     if (this.observerLazyBottom.current) {
+//   //       console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyBottom.current,
+//   //       bottomElm: this.observedElmBottom.current
+//   //       })
+//   //       // this.observerLazyBottom.current.unobserve(this.observedElmTop.current);
+//   //       this.observerLazyBottom.current.unobserve(this.observedElmBottom.current);
+//   //     }
+
+//   //     const observerCallback = (name) => getHandleIntersection((entry, observer) => {
+//   //       console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+//   //         wasKey: prevState.currentLazyLoadKey,
+//   //         nowKey: currentState.currentLazyLoadKey,
+//   //         entry, 
+//   //         observer,
+//   //         lastChild,
+//   //         entryTarget: entry?.target,
+//   //         entryTargetDataset: entry?.target?.dataset,
+//   //       });
+
+//   //       if (entry.isIntersecting) {
+//   //         observer.disconnect();
+//   //         const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+//   //         console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+//   //       // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
+
+//   //         this.setState({
+//   //           // shouldRecalculateLazyLoad: true,
+//   //           currentLazyLoadKey: blockKey
+//   //         });
+//   //       }
+//   //     })
+
+//   //     this.observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
+//   //     this.observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
+
+//   //     this.observedElmTop.current = firstChild;
+//   //     this.observedElmBottom.current = lastChild;
+
+//   //     this.observerLazyTop.current.observe(this.observedElmTop.current);
+//   //     // this.observerLazyBottom.current.observe(this.observedElmTop.current);
+//   //     this.observerLazyBottom.current.observe(this.observedElmBottom.current);
+
+//   //     console.log('[f] AFTER OBSERVER INIT', {observerBottom: this.observerLazyBottom.current, obsererTop: this.observerLazyTop.current, topElm: this.observedElmTop.current, bottomElm: this.observedElmBottom.current})
+//   //   }
+//   // }
+
+//   // render(): React.Node {
+//   //   const {
+//   //     blockRenderMap,
+//   //     blockRendererFn,
+//   //     blockStyleFn,
+//   //     customStyleMap,
+//   //     customStyleFn,
+//   //     editorState,
+//   //     editorKey,
+//   //     preventScroll,
+//   //     textDirectionality,
+//   //   } = this.props;
+
+//   //   const blockKeyToScrollTo = '6i4hg';
+
+//   //   const { currentLazyLoadKey } = this.state;
+
+//   //   const content = editorState.getCurrentContent();
+//   //   const selection = editorState.getSelection();
+//   //   const forceSelection = editorState.mustForceSelection();
+//   //   const decorator = editorState.getDecorator();
+//   //   const directionMap = nullthrows(editorState.getDirectionMap());
+
+//   //   const blocksAsArray = content.getBlocksAsArray();
+//   //   const processedBlocks = [];
+//   //   const alreadyEncounteredDepth = new Set<number>();
+//   //   let currentDepth = null;
+//   //   let lastWrapperTemplate = null;
+
+//   //   for (let ii = 0; ii < blocksAsArray.length; ii++) {
+//   //     const block = blocksAsArray[ii];
+//   //     const key = block.getKey();
+//   //     const blockType = block.getType();
+
+//   //     const customRenderer = blockRendererFn(block);
+//   //     let CustomComponent, customProps, customEditable;
+//   //     if (customRenderer) {
+//   //       CustomComponent = customRenderer.component;
+//   //       customProps = customRenderer.props;
+//   //       customEditable = customRenderer.editable;
+//   //     }
+
+//   //     const direction = textDirectionality
+//   //       ? textDirectionality
+//   //       : directionMap.get(key);
+//   //     const offsetKey = DraftOffsetKey.encode(key, 0, 0);
+//   //     const componentProps = {
+//   //       contentState: content,
+//   //       block,
+//   //       blockProps: customProps,
+//   //       blockStyleFn,
+//   //       customStyleMap,
+//   //       customStyleFn,
+//   //       decorator,
+//   //       direction,
+//   //       forceSelection,
+//   //       offsetKey,
+//   //       preventScroll,
+//   //       selection,
+//   //       tree: editorState.getBlockTree(key),
+//   //     };
+
+//   //     const configForType = blockRenderMap.get(blockType) || blockRenderMap.get('unstyled');
+//   //     const wrapperTemplate = configForType.wrapper;
+
+//   //     const Element =
+//   //       configForType.element || blockRenderMap.get('unstyled').element;
+
+//   //     const depth = block.getDepth();
+//   //     let className = '';
+//   //     if (blockStyleFn) {
+//   //       className = blockStyleFn(block);
+//   //     }
+
+//   //     // List items are special snowflakes, since we handle nesting and
+//   //     // counters manually.
+//   //     if (Element === 'li') {
+//   //       const shouldResetCount =
+//   //         lastWrapperTemplate !== wrapperTemplate ||
+//   //         currentDepth === null ||
+//   //         depth > currentDepth ||
+//   //         (depth < currentDepth && !alreadyEncounteredDepth.has(depth));
+//   //       className = joinClasses(
+//   //         className,
+//   //         getListItemClasses(blockType, depth, shouldResetCount, direction),
+//   //       );
+//   //     }
+
+//   //     alreadyEncounteredDepth.add(depth);
+
+//   //     const Component = CustomComponent || DraftEditorBlock;
+//   //     let childProps = {
+//   //       className,
+//   //       'data-block': true,
+//   //       'data-editor': editorKey,
+//   //       'data-offset-key': offsetKey,
+//   //       key,
+//   //     };
+//   //     if (customEditable !== undefined) {
+//   //       childProps = {
+//   //         ...childProps,
+//   //         contentEditable: customEditable,
+//   //         suppressContentEditableWarning: true,
+//   //       };
+//   //     }
+
+//   //     const child = React.createElement(
+//   //       Element,
+//   //       childProps,
+//   //       <Component {...componentProps} key={key} />,
+//   //     );
+
+//   //     processedBlocks.push({
+//   //       block: child,
+//   //       wrapperTemplate,
+//   //       key,
+//   //       offsetKey,
+//   //     });
+
+//   //     if (wrapperTemplate) {
+//   //       currentDepth = block.getDepth();
+//   //     } else {
+//   //       currentDepth = null;
+//   //     }
+//   //     lastWrapperTemplate = wrapperTemplate;
+//   //   }
+
+//   //   // Get 25 blocks above and below currentLazyLoadKey
+//   //   let lazyLoadBlocks = [];
+//   //   if(currentLazyLoadKey) {
+//   //     lazyLoadBlocks = getLazyLoadedBlocks({editorState: this.props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
+
+//   //     // // TODO: try and leave first and last block in the array
+//   //     // // TODO: earlier lazy loading
+//   //     // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+//   //     // TODO: for scroll to ref - add an initial lazy block key as prop 
+
+//   //     // TODO: for hidden clauses - skip display:none blocks
+//   //     // TODO: try "display: none" instead of removing blocks from container
+//   //   } else if (!currentLazyLoadKey) {
+//   //     lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+//   //   }
+
+//   //   console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
+
+//   //   // Group contiguous runs of blocks that have the same wrapperTemplate
+//   //   const outputBlocks = [];
+//   //   for (let ii = 0; ii < lazyLoadBlocks.length;) {
+//   //     const info: any = lazyLoadBlocks[ii];
+
+//   //     // console.log('[f] render inside checkubg - info', {info, ii});
+
+//   //     let block = null;
+
+//   //     if (info.wrapperTemplate) {
+//   //       const blocks = [];
+//   //       do {
+//   //         blocks.push(lazyLoadBlocks[ii].block);
+//   //         ii++;
+//   //       } while (
+//   //         ii < lazyLoadBlocks.length &&
+//   //         lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
+//   //       );
+//   //       const wrapperElement = React.cloneElement(
+//   //         info.wrapperTemplate,
+//   //         {
+//   //           key: info.key + '-wrap',
+//   //           'data-offset-key': info.offsetKey,
+//   //         },
+//   //         blocks,
+//   //       );
+//   //       // outputBlocks.push(wrapperElement);
+
+//   //       block = wrapperElement;
+//   //     } else {
+//   //       // outputBlocks.push(info.block);
+//   //       block = info.block;
+//   //       ii++;
+//   //     }
+
+//   //     if (block) {
+//   //       outputBlocks.push(block);
+//   //       if (ii === processedBlocks.length || ii === lazyLoadBlocks.length) {
+//   //         console.log('[f] LAST BLOCK - add event listenr to block', {block});
+//   //       }
+//   //     }
+//   //   }
+
+//   //   console.log('[f] render inside - props', {outputBlocks});
+
+//   //   return <div data-contents="true" ref={this.contentsRef}>{outputBlocks}</div>;
+//   }
+// }
+
+// module.exports = DraftEditorContents;
+
+
+const getShouldComponentUpdate = (prevProps, nextProps) => {
+
+  console.log('[f] NEW getShouldComponentUpdate IN DraftEditorContents-core.react.js', {prevBlockMap:  prevProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray(), nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+
+  const prevEditorState = prevProps.editorState;
+  const nextEditorState = nextProps.editorState;
+
+  const prevDirectionMap = prevEditorState.getDirectionMap();
+  const nextDirectionMap = nextEditorState.getDirectionMap();
+
+  // Text direction has changed for one or more blocks. We must re-render.
+  if (prevDirectionMap !== nextDirectionMap) {
+    return true;
+  }
+
+  const didHaveFocus = prevEditorState.getSelection().getHasFocus();
+  const nowHasFocus = nextEditorState.getSelection().getHasFocus();
+
+  if (didHaveFocus !== nowHasFocus) {
+    return true;
+  }
+
+  const nextNativeContent = nextEditorState.getNativelyRenderedContent();
+
+  const wasComposing = prevEditorState.isInCompositionMode();
+  const nowComposing = nextEditorState.isInCompositionMode();
+
+  // If the state is unchanged or we're currently rendering a natively
+  // rendered state, there's nothing new to be done.
+  if (
+    prevEditorState === nextEditorState ||
+      (nextNativeContent !== null &&
+        nextEditorState.getCurrentContent() === nextNativeContent) ||
+      (wasComposing && nowComposing)
+  ) {
+    console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
+    return false;
+  }
+
+  const prevContent = prevEditorState.getCurrentContent();
+  const nextContent = nextEditorState.getCurrentContent();
+  const prevDecorator = prevEditorState.getDecorator();
+  const nextDecorator = nextEditorState.getDecorator();
+
+  console.log('[f] SHOULD UPDATE? FINAL STEP', {
+    result: wasComposing !== nowComposing ||
+    prevContent !== nextContent ||
+    prevDecorator !== nextDecorator ||
+    nextEditorState.mustForceSelection() 
+
+  })
+
+  return (
+    wasComposing !== nowComposing ||
+    prevContent !== nextContent ||
+    prevDecorator !== nextDecorator ||
+    nextEditorState.mustForceSelection()
+  );
+}
+
+const DraftEditorContents = React.memo((props) => {
+
+  const contentsRef = React.useRef(null);
+  const observerLazyTop = React.useRef(null);
+  const observerLazyBottom = React.useRef(null);
+  const observedElmTop = React.useRef(null);
+  const observedElmBottom = React.useRef(null);
+
+  // const [outputBlocks, setOutputBlocks] = React.useState([]);
+  const initialCurrentLazyLoadKey = 'RANDOM_STUFF_INITIAL'
+  const [currentLazyLoadKey, setCurrentLazyLoadKey] = React.useState(initialCurrentLazyLoadKey);
+
+  React.useEffect(() => {
+    const currentBlockMap = props?.editorState?.getCurrentContent()?.getBlockMap();
     const shouldLazyLoad = currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
-    console.log('[f] %c componentDidUpdate, ', 'color: #123153', {
-      thisState: this.state,
+
+    console.log('[f] %c useEffect, ', 'color: #123153', {
       shouldLazyLoad,
       currentBlockMapArr: currentBlockMap.toArray(),
-      currentProps: this.props,
-      currentState,
-      prevProps,
-      prevState,
-      topElm: this.observedElmTop.current,
-      bottomElm: this.observedElmBottom.current,
-      observerTop: this.observerLazyTop.current,
-      observerBottom: this.observerLazyBottom.current,
+      currentProps: props,
+      topElm: observedElmTop.current,
+      bottomElm: observedElmBottom.current,
+      observerTop: observerLazyTop.current,
+      observerBottom: observerLazyBottom.current,
     })
 
     // TODO: improve performance on state change when we don't need to recalculate lazyBlocks
@@ -352,17 +714,17 @@ class DraftEditorContents extends React.Component<Props> {
     //   this.setState({...this.state, shouldRecalculateLazyLoad: false});
     // } else 
     
-    if (shouldLazyLoad && (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey)) {
+    if (shouldLazyLoad) {
       // let firstChild = getNextSibling(getFirstDraftBlock(this.contentsRef?.current?.firstChild, true), LAZY_LOAD_OFFSET);
       
-      let firstChild = getNextSibling(this.contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
-      let lastChild = getPreviousSibling(this.contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+      let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+      let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
 
       console.log('[f] %c OBSERVING NEW', 'color: #532523', {
-        wasKey: prevState.currentLazyLoadKey,
-        nowKey: currentState.currentLazyLoadKey,
-        observerTop: this.observerLazyTop.current,
-        observerBottom: this.observerLazyBottom.current,
+        // wasKey: prevState.currentLazyLoadKey,
+        nowKey: currentLazyLoadKey,
+        observerTop: observerLazyTop.current,
+        observerBottom: observerLazyBottom.current,
         firstChild,
         lastChild
       })
@@ -373,25 +735,23 @@ class DraftEditorContents extends React.Component<Props> {
         return;
       }
 
-      if (this.observerLazyTop.current) {
-        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyTop.current,
-        topElm: this.observedElmTop.current,
+      if (observerLazyTop.current) {
+        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyTop.current,
+        topElm: observedElmTop.current,
         })
-        this.observerLazyTop.current.unobserve(this.observedElmTop.current);
+        observerLazyTop.current.unobserve(observedElmTop.current);
       }
 
-      if (this.observerLazyBottom.current) {
-        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: this.observerLazyBottom.current,
-        bottomElm: this.observedElmBottom.current
+      if (observerLazyBottom.current) {
+        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyBottom.current,
+        bottomElm: observedElmBottom.current
         })
         // this.observerLazyBottom.current.unobserve(this.observedElmTop.current);
-        this.observerLazyBottom.current.unobserve(this.observedElmBottom.current);
+        observerLazyBottom.current.unobserve(observedElmBottom.current);
       }
 
       const observerCallback = (name) => getHandleIntersection((entry, observer) => {
         console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
-          wasKey: prevState.currentLazyLoadKey,
-          nowKey: currentState.currentLazyLoadKey,
           entry, 
           observer,
           lastChild,
@@ -405,219 +765,493 @@ class DraftEditorContents extends React.Component<Props> {
           console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
         // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
 
-          this.setState({
-            // shouldRecalculateLazyLoad: true,
-            currentLazyLoadKey: blockKey
-          });
+          // this.setState({
+          //   // shouldRecalculateLazyLoad: true,
+          //   currentLazyLoadKey: blockKey
+          // });
+
+          setCurrentLazyLoadKey(blockKey);
         }
       })
 
-      this.observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
-      this.observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
+      observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
+      observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
 
-      this.observedElmTop.current = firstChild;
-      this.observedElmBottom.current = lastChild;
+      observedElmTop.current = firstChild;
+      observedElmBottom.current = lastChild;
 
-      this.observerLazyTop.current.observe(this.observedElmTop.current);
+      observerLazyTop.current.observe(observedElmTop.current);
       // this.observerLazyBottom.current.observe(this.observedElmTop.current);
-      this.observerLazyBottom.current.observe(this.observedElmBottom.current);
+      observerLazyBottom.current.observe(observedElmBottom.current);
 
-      console.log('[f] AFTER OBSERVER INIT', {observerBottom: this.observerLazyBottom.current, obsererTop: this.observerLazyTop.current, topElm: this.observedElmTop.current, bottomElm: this.observedElmBottom.current})
+      console.log('[f] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
     }
-  }
 
-  render(): React.Node {
-    const {
-      blockRenderMap,
-      blockRendererFn,
+
+  }, [currentLazyLoadKey, props.editorState]);
+
+
+  // React.useEffect(() => {
+
+  //   console.log('[f] useLayoutEffect - props', {currentLazyLoadKey, props})
+    
+  //   const {
+  //     blockRenderMap,
+  //     blockRendererFn,
+  //     blockStyleFn,
+  //     customStyleMap,
+  //     customStyleFn,
+  //     editorState,
+  //     editorKey,
+  //     preventScroll,
+  //     textDirectionality,
+  //   } = props;
+
+  //   const blockKeyToScrollTo = '6i4hg';
+
+  //   const content = editorState.getCurrentContent();
+  //   const selection = editorState.getSelection();
+  //   const forceSelection = editorState.mustForceSelection();
+  //   const decorator = editorState.getDecorator();
+  //   const directionMap = nullthrows(editorState.getDirectionMap());
+
+  //   const blocksAsArray = content.getBlocksAsArray();
+  //   const processedBlocks = [];
+  //   const alreadyEncounteredDepth = new Set<number>();
+  //   let currentDepth = null;
+  //   let lastWrapperTemplate = null;
+
+  //   for (let ii = 0; ii < blocksAsArray.length; ii++) {
+  //     const block = blocksAsArray[ii];
+  //     const key = block.getKey();
+  //     const blockType = block.getType();
+
+  //     const customRenderer = blockRendererFn(block);
+  //     let CustomComponent, customProps, customEditable;
+  //     if (customRenderer) {
+  //       CustomComponent = customRenderer.component;
+  //       customProps = customRenderer.props;
+  //       customEditable = customRenderer.editable;
+  //     }
+
+  //     const direction = textDirectionality
+  //       ? textDirectionality
+  //       : directionMap.get(key);
+  //     const offsetKey = DraftOffsetKey.encode(key, 0, 0);
+  //     const componentProps = {
+  //       contentState: content,
+  //       block,
+  //       blockProps: customProps,
+  //       blockStyleFn,
+  //       customStyleMap,
+  //       customStyleFn,
+  //       decorator,
+  //       direction,
+  //       forceSelection,
+  //       offsetKey,
+  //       preventScroll,
+  //       selection,
+  //       tree: editorState.getBlockTree(key),
+  //     };
+
+  //     const configForType = blockRenderMap.get(blockType) || blockRenderMap.get('unstyled');
+  //     const wrapperTemplate = configForType.wrapper;
+
+  //     const Element =
+  //       configForType.element || blockRenderMap.get('unstyled').element;
+
+  //     const depth = block.getDepth();
+  //     let className = '';
+  //     if (blockStyleFn) {
+  //       className = blockStyleFn(block);
+  //     }
+
+  //     // List items are special snowflakes, since we handle nesting and
+  //     // counters manually.
+  //     if (Element === 'li') {
+  //       const shouldResetCount =
+  //         lastWrapperTemplate !== wrapperTemplate ||
+  //         currentDepth === null ||
+  //         depth > currentDepth ||
+  //         (depth < currentDepth && !alreadyEncounteredDepth.has(depth));
+  //       className = joinClasses(
+  //         className,
+  //         getListItemClasses(blockType, depth, shouldResetCount, direction),
+  //       );
+  //     }
+
+  //     alreadyEncounteredDepth.add(depth);
+
+  //     const Component = CustomComponent || DraftEditorBlock;
+  //     let childProps = {
+  //       className,
+  //       'data-block': true,
+  //       'data-editor': editorKey,
+  //       'data-offset-key': offsetKey,
+  //       key,
+  //     };
+  //     if (customEditable !== undefined) {
+  //       childProps = {
+  //         ...childProps,
+  //         contentEditable: customEditable,
+  //         suppressContentEditableWarning: true,
+  //       };
+  //     }
+
+  //     const child = React.createElement(
+  //       Element,
+  //       childProps,
+  //       <Component {...componentProps} key={key} />,
+  //     );
+
+  //     processedBlocks.push({
+  //       block: child,
+  //       wrapperTemplate,
+  //       key,
+  //       offsetKey,
+  //     });
+
+  //     if (wrapperTemplate) {
+  //       currentDepth = block.getDepth();
+  //     } else {
+  //       currentDepth = null;
+  //     }
+  //     lastWrapperTemplate = wrapperTemplate;
+  //   }
+
+  //   // Get 25 blocks above and below currentLazyLoadKey
+  //   let lazyLoadBlocks = [];
+  //   if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
+  //     lazyLoadBlocks = getLazyLoadedBlocks({editorState: props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
+
+  //     // // TODO: try and leave first and last block in the array
+  //     // // TODO: earlier lazy loading
+  //     // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+  //     // TODO: for scroll to ref - add an initial lazy block key as prop 
+
+  //     // TODO: for hidden clauses - skip display:none blocks
+  //     // TODO: try "display: none" instead of removing blocks from container
+  //   } else if (!currentLazyLoadKey || initialCurrentLazyLoadKey === currentLazyLoadKey) {
+  //     lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+  //   }
+
+  //   console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
+
+  //   // Group contiguous runs of blocks that have the same wrapperTemplate
+  //   const outputBlocks = [];
+  //   for (let ii = 0; ii < lazyLoadBlocks.length;) {
+  //     const info: any = lazyLoadBlocks[ii];
+
+  //     // console.log('[f] render inside checkubg - info', {info, ii});
+
+  //     let block = null;
+
+  //     if (info.wrapperTemplate) {
+  //       const blocks = [];
+  //       do {
+  //         blocks.push(lazyLoadBlocks[ii].block);
+  //         ii++;
+  //       } while (
+  //         ii < lazyLoadBlocks.length &&
+  //         lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
+  //       );
+  //       const wrapperElement = React.cloneElement(
+  //         info.wrapperTemplate,
+  //         {
+  //           key: info.key + '-wrap',
+  //           'data-offset-key': info.offsetKey,
+  //         },
+  //         blocks,
+  //       );
+  //       // outputBlocks.push(wrapperElement);
+
+  //       block = wrapperElement;
+  //     } else {
+  //       // outputBlocks.push(info.block);
+  //       block = info.block;
+  //       ii++;
+  //     }
+
+  //     if (block) {
+  //       outputBlocks.push(block);
+  //       if (ii === processedBlocks.length || ii === lazyLoadBlocks.length) {
+  //         console.log('[f] LAST BLOCK - add event listenr to block', {block});
+  //       }
+  //     }
+  //   }
+
+  //   setOutputBlocks(outputBlocks);
+  // }, [
+  //   currentLazyLoadKey, 
+  //   props.editorState?.getCurrentContent?.(), 
+  //   props.editorState?.getSelection?.(), 
+  //   props.editorState?.mustForceSelection?.(), 
+  //   props.editorState?.getDecorator?.(), 
+  //   props.editorState?.getDirectionMap?.()
+  //  ]
+  // )
+
+  /*
+   * Render
+   */ 
+
+  console.log('[f] useLayoutEffect - props', {currentLazyLoadKey, props})
+    
+  const {
+    blockRenderMap,
+    blockRendererFn,
+    blockStyleFn,
+    customStyleMap,
+    customStyleFn,
+    editorState,
+    editorKey,
+    preventScroll,
+    textDirectionality,
+  } = props;
+
+  const blockKeyToScrollTo = '6i4hg';
+
+  const content = editorState.getCurrentContent();
+  const selection = editorState.getSelection();
+  const forceSelection = editorState.mustForceSelection();
+  const decorator = editorState.getDecorator();
+  const directionMap = nullthrows(editorState.getDirectionMap());
+
+  const blocksAsArray = content.getBlocksAsArray();
+  const processedBlocks = [];
+  const alreadyEncounteredDepth = new Set<number>();
+  let currentDepth = null;
+  let lastWrapperTemplate = null;
+
+  for (let ii = 0; ii < blocksAsArray.length; ii++) {
+    const block = blocksAsArray[ii];
+    const key = block.getKey();
+    const blockType = block.getType();
+
+    const customRenderer = blockRendererFn(block);
+    let CustomComponent, customProps, customEditable;
+    if (customRenderer) {
+      CustomComponent = customRenderer.component;
+      customProps = customRenderer.props;
+      customEditable = customRenderer.editable;
+    }
+
+    const direction = textDirectionality
+      ? textDirectionality
+      : directionMap.get(key);
+    const offsetKey = DraftOffsetKey.encode(key, 0, 0);
+    const componentProps = {
+      contentState: content,
+      block,
+      blockProps: customProps,
       blockStyleFn,
       customStyleMap,
       customStyleFn,
-      editorState,
-      editorKey,
+      decorator,
+      direction,
+      forceSelection,
+      offsetKey,
       preventScroll,
-      textDirectionality,
-    } = this.props;
+      selection,
+      tree: editorState.getBlockTree(key),
+    };
 
-    const blockKeyToScrollTo = '6i4hg';
+    const configForType = blockRenderMap.get(blockType) || blockRenderMap.get('unstyled');
+    const wrapperTemplate = configForType.wrapper;
 
-    const { currentLazyLoadKey } = this.state;
+    const Element =
+      configForType.element || blockRenderMap.get('unstyled').element;
 
-    const content = editorState.getCurrentContent();
-    const selection = editorState.getSelection();
-    const forceSelection = editorState.mustForceSelection();
-    const decorator = editorState.getDecorator();
-    const directionMap = nullthrows(editorState.getDirectionMap());
+    const depth = block.getDepth();
+    let className = '';
+    if (blockStyleFn) {
+      className = blockStyleFn(block);
+    }
 
-    const blocksAsArray = content.getBlocksAsArray();
-    const processedBlocks = [];
-    const alreadyEncounteredDepth = new Set<number>();
-    let currentDepth = null;
-    let lastWrapperTemplate = null;
-
-    for (let ii = 0; ii < blocksAsArray.length; ii++) {
-      const block = blocksAsArray[ii];
-      const key = block.getKey();
-      const blockType = block.getType();
-
-      const customRenderer = blockRendererFn(block);
-      let CustomComponent, customProps, customEditable;
-      if (customRenderer) {
-        CustomComponent = customRenderer.component;
-        customProps = customRenderer.props;
-        customEditable = customRenderer.editable;
-      }
-
-      const direction = textDirectionality
-        ? textDirectionality
-        : directionMap.get(key);
-      const offsetKey = DraftOffsetKey.encode(key, 0, 0);
-      const componentProps = {
-        contentState: content,
-        block,
-        blockProps: customProps,
-        blockStyleFn,
-        customStyleMap,
-        customStyleFn,
-        decorator,
-        direction,
-        forceSelection,
-        offsetKey,
-        preventScroll,
-        selection,
-        tree: editorState.getBlockTree(key),
-      };
-
-      const configForType = blockRenderMap.get(blockType) || blockRenderMap.get('unstyled');
-      const wrapperTemplate = configForType.wrapper;
-
-      const Element =
-        configForType.element || blockRenderMap.get('unstyled').element;
-
-      const depth = block.getDepth();
-      let className = '';
-      if (blockStyleFn) {
-        className = blockStyleFn(block);
-      }
-
-      // List items are special snowflakes, since we handle nesting and
-      // counters manually.
-      if (Element === 'li') {
-        const shouldResetCount =
-          lastWrapperTemplate !== wrapperTemplate ||
-          currentDepth === null ||
-          depth > currentDepth ||
-          (depth < currentDepth && !alreadyEncounteredDepth.has(depth));
-        className = joinClasses(
-          className,
-          getListItemClasses(blockType, depth, shouldResetCount, direction),
-        );
-      }
-
-      alreadyEncounteredDepth.add(depth);
-
-      const Component = CustomComponent || DraftEditorBlock;
-      let childProps = {
+    // List items are special snowflakes, since we handle nesting and
+    // counters manually.
+    if (Element === 'li') {
+      const shouldResetCount =
+        lastWrapperTemplate !== wrapperTemplate ||
+        currentDepth === null ||
+        depth > currentDepth ||
+        (depth < currentDepth && !alreadyEncounteredDepth.has(depth));
+      className = joinClasses(
         className,
-        'data-block': true,
-        'data-editor': editorKey,
-        'data-offset-key': offsetKey,
-        key,
-      };
-      if (customEditable !== undefined) {
-        childProps = {
-          ...childProps,
-          contentEditable: customEditable,
-          suppressContentEditableWarning: true,
-        };
-      }
-
-      const child = React.createElement(
-        Element,
-        childProps,
-        <Component {...componentProps} key={key} />,
+        getListItemClasses(blockType, depth, shouldResetCount, direction),
       );
-
-      processedBlocks.push({
-        block: child,
-        wrapperTemplate,
-        key,
-        offsetKey,
-      });
-
-      if (wrapperTemplate) {
-        currentDepth = block.getDepth();
-      } else {
-        currentDepth = null;
-      }
-      lastWrapperTemplate = wrapperTemplate;
     }
 
-    // Get 25 blocks above and below currentLazyLoadKey
-    let lazyLoadBlocks = [];
-    if(currentLazyLoadKey) {
-      lazyLoadBlocks = getLazyLoadedBlocks({editorState: this.props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
+    alreadyEncounteredDepth.add(depth);
 
-      // // TODO: try and leave first and last block in the array
-      // // TODO: earlier lazy loading
-      // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
-      // TODO: for scroll to ref - add an initial lazy block key as prop 
-
-      // TODO: for hidden clauses - skip display:none blocks
-      // TODO: try "display: none" instead of removing blocks from container
-    } else if (!currentLazyLoadKey) {
-      lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+    const Component = CustomComponent || DraftEditorBlock;
+    let childProps = {
+      className,
+      'data-block': true,
+      'data-editor': editorKey,
+      'data-offset-key': offsetKey,
+      key,
+    };
+    if (customEditable !== undefined) {
+      childProps = {
+        ...childProps,
+        contentEditable: customEditable,
+        suppressContentEditableWarning: true,
+      };
     }
 
-    console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
+    const child = React.createElement(
+      Element,
+      childProps,
+      <Component {...componentProps} key={key} />,
+    );
 
-    // Group contiguous runs of blocks that have the same wrapperTemplate
-    const outputBlocks = [];
-    for (let ii = 0; ii < lazyLoadBlocks.length;) {
-      const info: any = lazyLoadBlocks[ii];
+    processedBlocks.push({
+      block: child,
+      wrapperTemplate,
+      key,
+      offsetKey,
+    });
 
-      // console.log('[f] render inside checkubg - info', {info, ii});
-
-      let block = null;
-
-      if (info.wrapperTemplate) {
-        const blocks = [];
-        do {
-          blocks.push(lazyLoadBlocks[ii].block);
-          ii++;
-        } while (
-          ii < lazyLoadBlocks.length &&
-          lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
-        );
-        const wrapperElement = React.cloneElement(
-          info.wrapperTemplate,
-          {
-            key: info.key + '-wrap',
-            'data-offset-key': info.offsetKey,
-          },
-          blocks,
-        );
-        // outputBlocks.push(wrapperElement);
-
-        block = wrapperElement;
-      } else {
-        // outputBlocks.push(info.block);
-        block = info.block;
-        ii++;
-      }
-
-      if (block) {
-        outputBlocks.push(block);
-        if (ii === processedBlocks.length || ii === lazyLoadBlocks.length) {
-          console.log('[f] LAST BLOCK - add event listenr to block', {block});
-        }
-      }
+    if (wrapperTemplate) {
+      currentDepth = block.getDepth();
+    } else {
+      currentDepth = null;
     }
-
-    console.log('[f] render inside - props', {outputBlocks});
-
-    return <div data-contents="true" ref={this.contentsRef}>{outputBlocks}</div>;
+    lastWrapperTemplate = wrapperTemplate;
   }
-}
 
+  // Get 25 blocks above and below currentLazyLoadKey
+  let lazyLoadBlocks = [];
+  if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
+    lazyLoadBlocks = getLazyLoadedBlocks({editorState: props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
+
+    // // TODO: try and leave first and last block in the array
+    // // TODO: earlier lazy loading
+    // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+    // TODO: for scroll to ref - add an initial lazy block key as prop 
+
+    // TODO: for hidden clauses - skip display:none blocks
+    // TODO: try "display: none" instead of removing blocks from container
+  } else if (!currentLazyLoadKey || initialCurrentLazyLoadKey === currentLazyLoadKey) {
+    lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+  }
+
+  console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
+
+  // Group contiguous runs of blocks that have the same wrapperTemplate
+  const outputBlocks = [];
+  for (let ii = 0; ii < lazyLoadBlocks.length;) {
+    const info: any = lazyLoadBlocks[ii];
+
+    // console.log('[f] render inside checkubg - info', {info, ii});
+
+    let block = null;
+
+    if (info.wrapperTemplate) {
+      const blocks = [];
+      do {
+        blocks.push(lazyLoadBlocks[ii].block);
+        ii++;
+      } while (
+        ii < lazyLoadBlocks.length &&
+        lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
+      );
+      const wrapperElement = React.cloneElement(
+        info.wrapperTemplate,
+        {
+          key: info.key + '-wrap',
+          'data-offset-key': info.offsetKey,
+        },
+        blocks,
+      );
+      // outputBlocks.push(wrapperElement);
+
+      block = wrapperElement;
+    } else {
+      // outputBlocks.push(info.block);
+      block = info.block;
+      ii++;
+    }
+
+    if (block) {
+      outputBlocks.push(block);
+      if (ii === processedBlocks.length || ii === lazyLoadBlocks.length) {
+        console.log('[f] LAST BLOCK - add event listenr to block', {block});
+      }
+    }
+  }
+
+
+  return (
+    <div data-contents="true" ref={contentsRef}>
+      {outputBlocks}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+
+  return !getShouldComponentUpdate(prevProps, nextProps);
+
+  console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {prevProps, nextProps, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+
+  const prevEditorState = prevProps.editorState;
+  const nextEditorState = nextProps.editorState;
+
+  const prevDirectionMap = prevEditorState.getDirectionMap();
+  const nextDirectionMap = nextEditorState.getDirectionMap();
+
+  // Text direction has changed for one or more blocks. We must re-render.
+  if (prevDirectionMap !== nextDirectionMap) {
+    console.log('[f] return false 1')
+    return false;
+  }
+
+  const didHaveFocus = prevEditorState.getSelection().getHasFocus();
+  const nowHasFocus = nextEditorState.getSelection().getHasFocus();
+
+  if (didHaveFocus !== nowHasFocus) {
+    console.log('[f] return false 2')
+    return false;
+  }
+
+  const nextNativeContent = nextEditorState.getNativelyRenderedContent();
+
+  const wasComposing = prevEditorState.isInCompositionMode();
+  const nowComposing = nextEditorState.isInCompositionMode();
+  
+  // const prevState = this.state;
+  // const stateChanged = prevState !== nextState;
+
+  // If the state is unchanged or we're currently rendering a natively
+  // rendered state, there's nothing new to be done.
+  if (
+    prevEditorState === nextEditorState ||
+      (nextNativeContent !== null && nextEditorState.getCurrentContent() === nextNativeContent) ||
+      (wasComposing && nowComposing)
+  ) {
+    console.log('[f] RETURNING TRUE 1', {wasComposing, nowComposing});
+    return true;
+  }
+
+  const prevContent = prevEditorState.getCurrentContent();
+  const nextContent = nextEditorState.getCurrentContent();
+  const prevDecorator = prevEditorState.getDecorator();
+  const nextDecorator = nextEditorState.getDecorator();
+
+  console.log('[f] SHOULD SKIP? FINAL STEP', {
+    result: wasComposing === nowComposing &&
+    prevContent === nextContent &&
+    prevDecorator === nextDecorator &&
+    !nextEditorState.mustForceSelection(),
+  })
+
+  return (
+    wasComposing === nowComposing &&
+    prevContent === nextContent &&
+    prevDecorator === nextDecorator &&
+    !nextEditorState.mustForceSelection()
+  );
+});
+
+// export default DraftEditorContents;
 module.exports = DraftEditorContents;
