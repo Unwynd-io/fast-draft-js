@@ -69,6 +69,7 @@ const getListItemClasses = (
 };
 
 const MAX_BLOCKS_TO_DISPLAY = 50;
+const LAZY_LOAD_OFFSET = 5;
 
 
 const getHandleIntersection = (callback) => (entries, observer) => {
@@ -90,8 +91,32 @@ const getHandleIntersection = (callback) => (entries, observer) => {
   });
 }
 
+const getPreviousSibling = (element, count) => {
+  if (count === 0) {
+    return element;
+  }
+
+  if (!element.previousSibling) {
+    return element;
+  }
+
+  return getPreviousSibling(element.previousSibling, count - 1);
+}
+
+const getNextSibling = (element, count) => {
+  if (count === 0) {
+    return element;
+  }
+  
+  if (!element.nextSibling) {
+    return element;
+  }
+
+  return getNextSibling(element.nextSibling, count - 1);
+}
+
 const getFirstDraftBlock = (element, isFirst = true) => {
-  if (element?.dataset?.offsetKey && !element.classList.contains('public-DraftStyleDefault-ol')) {
+  if (element?.dataset?.offsetKey && !['OL', 'UL'].includes(element.tagName)) {
     return element;
   }
 
@@ -123,9 +148,9 @@ class DraftEditorContents extends React.Component<Props> {
     }
     this.contentsRef = React.createRef(null);
 
+    // Lazy load observers
     this.observerLazyTop = React.createRef(null);
     this.observerLazyBottom = React.createRef(null);
-
     this.observedElmTop = React.createRef(null);
     this.observedElmBottom = React.createRef(null);
  }
@@ -262,8 +287,8 @@ class DraftEditorContents extends React.Component<Props> {
 
 
     if (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
-      let firstChild = getFirstDraftBlock(this.contentsRef?.current?.firstChild, true);
-      let lastChild = getFirstDraftBlock(this.contentsRef?.current?.lastChild, false);
+      let firstChild = getFirstDraftBlock(getNextSibling(this.contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET), true);
+      let lastChild = getFirstDraftBlock(getPreviousSibling(this.contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET), false);
 
       console.log('[f] %c OBSERVING NEW', 'color: #532523', {
         wasKey: prevState.currentLazyLoadKey,
@@ -460,13 +485,23 @@ class DraftEditorContents extends React.Component<Props> {
     // Get 25 blocks above and below currentLazyLoadKey
     let lazyLoadBlocks = [...processedBlocks];
     if(currentLazyLoadKey) {
+      lazyLoadBlocks = [];
 
-      const currentIndex = processedBlocks.findIndex(block => block.key === currentLazyLoadKey);
+      const startOffsetBlockIndex = processedBlocks.findIndex(block => block.key === this.props.editorState.getSelection().getStartKey());
+      const endOffsetBlockIndex = processedBlocks.findIndex(block => block.key === this.props.editorState.getSelection().getEndKey());
+
+      const lazyLoadBlockIndex = processedBlocks.findIndex(block => block.key === currentLazyLoadKey);
+
+      console.log('[f] INTIIAL CURRENT INDEX', {lazyLoadBlockIndex, startOffsetBlockIndex, endOffsetBlockIndex, blockOnIndex: processedBlocks[lazyLoadBlockIndex], currentLazyLoadKey, processedBlocks, })
 
       const BLOCK_RANGE = Math.floor(MAX_BLOCKS_TO_DISPLAY / 2);
 
-      let start = currentIndex - BLOCK_RANGE;
-      let end = currentIndex + BLOCK_RANGE;
+      /*
+       * Calculate lazy blocks
+       */ 
+
+      let start = lazyLoadBlockIndex - BLOCK_RANGE - LAZY_LOAD_OFFSET;
+      let end = lazyLoadBlockIndex + BLOCK_RANGE + LAZY_LOAD_OFFSET;
 
       let difference = 0;
 
@@ -476,8 +511,8 @@ class DraftEditorContents extends React.Component<Props> {
         end += difference;
       }
 
-      if (end > processedBlocks.length - 1) {
-        end = processedBlocks.length - 1;
+      if (end > processedBlocks.length) {
+        end = processedBlocks.length;
         start = end - MAX_BLOCKS_TO_DISPLAY;
 
         if (start < 0) {
@@ -485,20 +520,70 @@ class DraftEditorContents extends React.Component<Props> {
         }
       }
 
-      console.log('[f] calc lazy load blocks', {start, end, difference});
+      console.log('[f] %c calc lazy load blocks', 'color: #163432', {start, end, difference, startOffsetBlockIndex, endOffsetBlockIndex});
 
-      lazyLoadBlocks = processedBlocks.slice(start, end);
+      /*
+       * Map the lazy blocks
+       */
 
-      // TODO: try and leave first and last block in the array
+      const lazySlice = processedBlocks.slice(start, end);
+      const FIRST_BLOCK = 0;
+      const LAST_BLOCK = processedBlocks.length - 1;
+
+      if (start > FIRST_BLOCK) {
+        console.log('[f] start > FIRST_BLOCK, adding first block')
+        lazyLoadBlocks.push(processedBlocks[FIRST_BLOCK]);
+      }
+
+      // Start selection off screen (ABOVE)
+      if ((startOffsetBlockIndex < start && startOffsetBlockIndex !== FIRST_BLOCK)) {
+        console.log('[f] loading START selection off screen ABOVE')
+        lazyLoadBlocks.push(processedBlocks[startOffsetBlockIndex]);
+      }
+
+      // End selection off screen (ABOVE)
+      if ((endOffsetBlockIndex < start && endOffsetBlockIndex !== FIRST_BLOCK)
+      && endOffsetBlockIndex !== startOffsetBlockIndex) {
+        console.log('[f] loading END selection off screen ABOVE')
+        lazyLoadBlocks.push(processedBlocks[endOffsetBlockIndex]);
+      }
+
+      // Loading the slice
+      lazyLoadBlocks = lazyLoadBlocks.concat(lazySlice);
+
+      // Start selection off screen (BELOW)
+      if (startOffsetBlockIndex > end && startOffsetBlockIndex !== LAST_BLOCK) {
+        console.log('[f] loading START selection off screen BELOW')
+        lazyLoadBlocks.push(processedBlocks[startOffsetBlockIndex]);
+      }
+
+      // End selection off screen (BELOW)
+      if ((endOffsetBlockIndex > end && endOffsetBlockIndex !== LAST_BLOCK)
+        && endOffsetBlockIndex !== startOffsetBlockIndex) {
+        console.log('[f] loading END selection off screen BELOW')
+        lazyLoadBlocks.push(processedBlocks[endOffsetBlockIndex]);
+      }
+
+      if (end < LAST_BLOCK + 1) {
+        console.log('[f] end < LAST_BLOCK, loading last block')
+        lazyLoadBlocks.push(processedBlocks[LAST_BLOCK]);
+      }
+
+
+      // // TODO: try and leave first and last block in the array
+      // // TODO: earlier lazy loading
+      // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+      // TODO: for hidden clauses - skip display:none blocks
+      // TODO: for scroll to ref - add an initial lazy block key as prop 
+
       // TODO: try "display: none" instead of removing blocks from container
-      // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
     }
 
     console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
 
     // Group contiguous runs of blocks that have the same wrapperTemplate
     const outputBlocks = [];
-    for (let ii = 0; ii < lazyLoadBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY;) {
+    for (let ii = 0; ii < lazyLoadBlocks.length;) {
       const info: any = lazyLoadBlocks[ii];
 
       // console.log('[f] render inside checkubg - info', {info, ii});
@@ -511,7 +596,7 @@ class DraftEditorContents extends React.Component<Props> {
           blocks.push(lazyLoadBlocks[ii].block);
           ii++;
         } while (
-          ii < lazyLoadBlocks.length && ii < MAX_BLOCKS_TO_DISPLAY &&
+          ii < lazyLoadBlocks.length &&
           lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
         );
         const wrapperElement = React.cloneElement(
@@ -533,7 +618,7 @@ class DraftEditorContents extends React.Component<Props> {
 
       if (block) {
         outputBlocks.push(block);
-        if (ii === processedBlocks.length || ii === lazyLoadBlocks.length || ii === MAX_BLOCKS_TO_DISPLAY) {
+        if (ii === processedBlocks.length || ii === lazyLoadBlocks.length) {
           console.log('[f] LAST BLOCK - add event listenr to block', {block});
         }
       }
