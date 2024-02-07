@@ -91,7 +91,7 @@ const getHandleIntersection = (callback) => (entries, observer) => {
 }
 
 const getFirstDraftBlock = (element, isFirst = true) => {
-  if (element?.dataset?.offsetKey) {
+  if (element?.dataset?.offsetKey && !element.classList.contains('public-DraftStyleDefault-ol')) {
     return element;
   }
 
@@ -311,6 +311,7 @@ class DraftEditorContents extends React.Component<Props> {
           const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
           console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
   
+
           this.setState({
             currentLazyLoadKey: blockKey
           });
@@ -493,7 +494,7 @@ class DraftEditorContents extends React.Component<Props> {
       // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
     }
 
-    console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey)
+    console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
 
     // Group contiguous runs of blocks that have the same wrapperTemplate
     const outputBlocks = [];
