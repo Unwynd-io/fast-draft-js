@@ -91,28 +91,36 @@ const getHandleIntersection = (callback) => (entries, observer) => {
   });
 }
 
-const getPreviousSibling = (element, count) => {
+
+const getPreviousSibling = (element, count, callback) => {
+  console.log('[getPreviousSibling]', {element, elPreviousSibling: element.previousSibling, count})
+
+  const newElement = callback ? callback(element) : element;
+
   if (count === 0) {
-    return element;
+    return newElement;
   }
 
-  if (!element.previousSibling) {
-    return element;
+  if (!newElement.previousSibling) {
+    return newElement;
   }
 
-  return getPreviousSibling(element.previousSibling, count - 1);
+  return getPreviousSibling(newElement.previousSibling, count - 1, callback);
 }
 
-const getNextSibling = (element, count) => {
+const getNextSibling = (element, count, callback) => {
+
+  const newElement = callback ? callback(element) : element;
+
   if (count === 0) {
-    return element;
+    return newElement;
   }
   
-  if (!element.nextSibling) {
-    return element;
+  if (!newElement.nextSibling) {
+    return newElement;
   }
 
-  return getNextSibling(element.nextSibling, count - 1);
+  return getNextSibling(newElement.nextSibling, count - 1, callback);
 }
 
 const getFirstDraftBlock = (element, isFirst = true) => {
@@ -287,8 +295,10 @@ class DraftEditorContents extends React.Component<Props> {
 
 
     if (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
-      let firstChild = getFirstDraftBlock(getNextSibling(this.contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET), true);
-      let lastChild = getFirstDraftBlock(getPreviousSibling(this.contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET), false);
+      // let firstChild = getNextSibling(getFirstDraftBlock(this.contentsRef?.current?.firstChild, true), LAZY_LOAD_OFFSET);
+      
+      let firstChild = getNextSibling(this.contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+      let lastChild = getPreviousSibling(this.contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
 
       console.log('[f] %c OBSERVING NEW', 'color: #532523', {
         wasKey: prevState.currentLazyLoadKey,
@@ -335,7 +345,7 @@ class DraftEditorContents extends React.Component<Props> {
           observer.disconnect();
           const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
           console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
-  
+        // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
 
           this.setState({
             currentLazyLoadKey: blockKey
@@ -483,7 +493,7 @@ class DraftEditorContents extends React.Component<Props> {
     }
 
     // Get 25 blocks above and below currentLazyLoadKey
-    let lazyLoadBlocks = [...processedBlocks];
+    let lazyLoadBlocks = [];
     if(currentLazyLoadKey) {
       lazyLoadBlocks = [];
 
@@ -573,10 +583,12 @@ class DraftEditorContents extends React.Component<Props> {
       // // TODO: try and leave first and last block in the array
       // // TODO: earlier lazy loading
       // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
-      // TODO: for hidden clauses - skip display:none blocks
       // TODO: for scroll to ref - add an initial lazy block key as prop 
 
+      // TODO: for hidden clauses - skip display:none blocks
       // TODO: try "display: none" instead of removing blocks from container
+    } else {
+      lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
     }
 
     console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
