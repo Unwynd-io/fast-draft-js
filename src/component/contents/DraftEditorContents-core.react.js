@@ -239,62 +239,23 @@ class DraftEditorContents extends React.Component<Props> {
 
   componentDidUpdate(prevProps, prevState) {
     const currentState = this.state;
-    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap()?.toArray();
-    console.log('[f] %c componentDidUpdate, ', 'color: #123153', {currentBlockMap, currentProps: this.props, currentState, prevProps, prevState, topElm: this.observedElmTop.current, bottomElm: this.observedElmBottom.current, observerTop: this.observerLazyTop.current, observerBottom: this.observerLazyBottom.current,
-    })
+    const currentBlockMap = this?.props?.editorState?.getCurrentContent()?.getBlockMap();
     
-    // const handleIntersection = (entries, observer) => {
-    //   console.log('[f] props of intersection', {entries, observer})
+    const shouldLazyLoad = currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
+    console.log('[f] %c componentDidUpdate, ', 'color: #123153', {
+      shouldLazyLoad,
+      currentBlockMapArr: currentBlockMap.toArray(),
+      currentProps: this.props,
+      currentState,
+      prevProps,
+      prevState,
+      topElm: this.observedElmTop.current,
+      bottomElm: this.observedElmBottom.current,
+      observerTop: this.observerLazyTop.current,
+      observerBottom: this.observerLazyBottom.current,
+    })
 
-    //   entries.forEach(entry => {
-    //     if (entry.isIntersecting) {
-    //       const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-    //       console.log('[f] Target div is now in the viewport!', {entry, observer, blockKey});
-    //       observer.disconnect();
-
-    //       this.setState({
-    //         currentLazyLoadKey: blockKey
-    //       });
-    //     }
-    //   });
-    // }
-  
-    // const startObserver = (retry: boolean) => {
-    //   // Create an intersection observer with the callback function
-    //   const observerTop = new IntersectionObserver(handleIntersection);
-    //   const observerBottom = new IntersectionObserver(handleIntersection);
-    //   // Target the div you want to observe
-      
-    //   let lastChild = this.contentsRef?.current?.lastChild;
-    //   if(!lastChild) {
-
-    //     console.log('[f] NO LAST CHILD - contents: ', {
-    //       contentsBox: this.contentsRef?.current,
-    //       children: this.contentsRef?.current?.children,
-    //       childrenCount: this.contentsRef?.current?.children?.length
-    //     })
-
-    //     if(retry) {
-    //       // const test = document.querySelector(`[data-editor]`)?.parentNode?.parentNode
-    //       console.log('cannot find contentsRef after 1 retry', this.contentsRef?.current, /*test*/)
-    //       return;
-    //     }
-    //     return setTimeout(() => startObserver(true), 1000)
-    //   }
-    //   const targetTopDiv = this.contentsRef.current.firstChild;
-
-    //   const childThreeFromBottom = this.contentsRef.current[this.contentsRef.current.length-3];
-    //   const targetBottomDiv = childThreeFromBottom ? childThreeFromBottom : this.contentsRef.current.lastChild;
-
-    //   console.log('[f] targetDivs', {targetTopDiv, targetBottomDiv});
-
-    //   // Start observing the target div
-    //   observerTop.observe(targetTopDiv);
-    //   observerBottom.observe(targetBottomDiv);
-    // }
-
-
-    if (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey) {
+    if (shouldLazyLoad && (!this.observerLazyBottom.current || !this.observerLazyTop.current || prevState.currentLazyLoadKey !== currentState.currentLazyLoadKey)) {
       // let firstChild = getNextSibling(getFirstDraftBlock(this.contentsRef?.current?.firstChild, true), LAZY_LOAD_OFFSET);
       
       let firstChild = getNextSibling(this.contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
@@ -497,8 +458,11 @@ class DraftEditorContents extends React.Component<Props> {
     if(currentLazyLoadKey) {
       lazyLoadBlocks = [];
 
-      const startOffsetBlockIndex = processedBlocks.findIndex(block => block.key === this.props.editorState.getSelection().getStartKey());
-      const endOffsetBlockIndex = processedBlocks.findIndex(block => block.key === this.props.editorState.getSelection().getEndKey());
+      const editorSelection = this.props.editorState.getSelection();
+      const startOffsetBlockIndex = processedBlocks.findIndex(block => block.key === editorSelection.getStartKey());
+      const endOffsetBlockIndex = processedBlocks.findIndex(block => block.key === editorSelection.getEndKey());
+      const startSelectionExists = startOffsetBlockIndex !== -1;
+      const endSelectionExists = endOffsetBlockIndex !== -1;
 
       const lazyLoadBlockIndex = processedBlocks.findIndex(block => block.key === currentLazyLoadKey);
 
@@ -546,14 +510,14 @@ class DraftEditorContents extends React.Component<Props> {
       }
 
       // Start selection off screen (ABOVE)
-      if ((startOffsetBlockIndex < start && startOffsetBlockIndex !== FIRST_BLOCK)) {
+      if (startSelectionExists && (startOffsetBlockIndex < start && startOffsetBlockIndex !== FIRST_BLOCK)) {
         console.log('[f] loading START selection off screen ABOVE')
         lazyLoadBlocks.push(processedBlocks[startOffsetBlockIndex]);
       }
 
       // End selection off screen (ABOVE)
-      if ((endOffsetBlockIndex < start && endOffsetBlockIndex !== FIRST_BLOCK)
-      && endOffsetBlockIndex !== startOffsetBlockIndex) {
+      if (endSelectionExists && ((endOffsetBlockIndex < start && endOffsetBlockIndex !== FIRST_BLOCK)
+      && endOffsetBlockIndex !== startOffsetBlockIndex)) {
         console.log('[f] loading END selection off screen ABOVE')
         lazyLoadBlocks.push(processedBlocks[endOffsetBlockIndex]);
       }
@@ -562,14 +526,14 @@ class DraftEditorContents extends React.Component<Props> {
       lazyLoadBlocks = lazyLoadBlocks.concat(lazySlice);
 
       // Start selection off screen (BELOW)
-      if (startOffsetBlockIndex > end && startOffsetBlockIndex !== LAST_BLOCK) {
+      if (startSelectionExists && (startOffsetBlockIndex > end && startOffsetBlockIndex !== LAST_BLOCK)) {
         console.log('[f] loading START selection off screen BELOW')
         lazyLoadBlocks.push(processedBlocks[startOffsetBlockIndex]);
       }
 
       // End selection off screen (BELOW)
-      if ((endOffsetBlockIndex > end && endOffsetBlockIndex !== LAST_BLOCK)
-        && endOffsetBlockIndex !== startOffsetBlockIndex) {
+      if (endSelectionExists &&  ((endOffsetBlockIndex > end && endOffsetBlockIndex !== LAST_BLOCK)
+        && endOffsetBlockIndex !== startOffsetBlockIndex)) {
         console.log('[f] loading END selection off screen BELOW')
         lazyLoadBlocks.push(processedBlocks[endOffsetBlockIndex]);
       }
