@@ -1,7 +1,7 @@
 {
   "name": "draft-js",
   "description": "A React framework for building text editors.",
-  "version": "0.11.7-Y34",
+  "version": "0.11.7-Y39",
   "keywords": [
     "draftjs",
     "editor",
