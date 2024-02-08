@@ -552,7 +552,7 @@ const DraftEditorContents = React.memo((props) => {
    * Calculate indexes to render
    */
 
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
     const blocksAsArray = props.editorState.getCurrentContent().getBlocksAsArray();
 
     console.log('[f] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blocksAsArray, props})
@@ -812,8 +812,20 @@ const DraftEditorContents = React.memo((props) => {
   let currentDepth = null;
   let lastWrapperTemplate = null;
 
-  for (let ii = 0; ii < blocksAsArray.length; ii++) {
-    const block = blocksAsArray[ii];
+  let lazyLoadBlocks = [];
+
+  for (let i = 0; i < outputBlockIndexes.length; i++) {
+    if (i % 10 === 0) {
+      console.log('[f] inserting lazy block (every 10th log)', {i, index: outputBlockIndexes[i], block: blocksAsArray[outputBlockIndexes[i]]})
+    }
+    const block = blocksAsArray[outputBlockIndexes[i]];
+    if (block) {
+      lazyLoadBlocks.push(block);
+    }
+  }
+
+  for (let ii = 0; ii < lazyLoadBlocks.length; ii++) {
+    const block = lazyLoadBlocks[ii];
     const key = block.getKey();
     const blockType = block.getType();
 
@@ -910,7 +922,7 @@ const DraftEditorContents = React.memo((props) => {
     lastWrapperTemplate = wrapperTemplate;
   }
 
-  let lazyLoadBlocks = [];
+  // let lazyLoadBlocks = [];
   // if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
   //   lazyLoadBlocks = getLazyLoadedBlocks({editorState: props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
 
@@ -925,24 +937,24 @@ const DraftEditorContents = React.memo((props) => {
   //   lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
   // }
 
-  for (let i = 0; i < outputBlockIndexes.length; i++) {
+  // for (let i = 0; i < outputBlockIndexes.length; i++) {
     
-    if (i % 10 === 0) {
-      console.log('[f] inserting lazy block (every 10th log)', {i, index: outputBlockIndexes[i], block: processedBlocks[outputBlockIndexes[i]]})
-    }
-    const block = processedBlocks[outputBlockIndexes[i]];
-    if (block) {
-      lazyLoadBlocks.push(block);
-    }
-  }
+  //   if (i % 10 === 0) {
+  //     console.log('[f] inserting lazy block (every 10th log)', {i, index: outputBlockIndexes[i], block: processedBlocks[outputBlockIndexes[i]]})
+  //   }
+  //   const block = processedBlocks[outputBlockIndexes[i]];
+  //   if (block) {
+  //     lazyLoadBlocks.push(block);
+  //   }
+  // }
 
   console.log('[f] render after processing:', {currentLazyLoadKey, contextText: content.getBlockForKey(currentLazyLoadKey)?.text, 
     processedBlocks, outputBlockIndexes, lazyLoadBlocks, blocksAsArray })
 
   // Group contiguous runs of blocks that have the same wrapperTemplate
   const outputBlocks = [];
-  for (let ii = 0; ii < lazyLoadBlocks.length;) {
-    const info: any = lazyLoadBlocks[ii];
+  for (let ii = 0; ii < processedBlocks.length;) {
+    const info: any = processedBlocks[ii];
 
     // console.log('[f] render inside checkubg - info', {info, ii});
 
@@ -951,11 +963,11 @@ const DraftEditorContents = React.memo((props) => {
     if (info.wrapperTemplate) {
       const blocks = [];
       do {
-        blocks.push(lazyLoadBlocks[ii].block);
+        blocks.push(processedBlocks[ii].block);
         ii++;
       } while (
-        ii < lazyLoadBlocks.length &&
-        lazyLoadBlocks[ii].wrapperTemplate === info.wrapperTemplate
+        ii < processedBlocks.length &&
+        processedBlocks[ii].wrapperTemplate === info.wrapperTemplate
       );
       const wrapperElement = React.cloneElement(
         info.wrapperTemplate,
@@ -976,7 +988,7 @@ const DraftEditorContents = React.memo((props) => {
 
     if (block) {
       outputBlocks.push(block);
-      if (ii === processedBlocks.length || ii === lazyLoadBlocks.length) {
+      if (ii === processedBlocks.length) {
         console.log('[f] LAST BLOCK - add event listenr to block', {block});
       }
     }
