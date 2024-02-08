@@ -2,7 +2,7 @@ const fs = require('fs');
 // ! run "node scripts/update-package-version.js" from the root with other bundled commands.
 
 // DIRECT PATH TO THE PACKAGE.JSON FILE
-const ABSOLUTE_PATH = __dirname.replace('/scripts', '/package.json');
+const ABSOLUTE_PATH = __dirname.replace('scripts', 'package.json');
 const draftPackageJson = fs.readFileSync(ABSOLUTE_PATH);
 if(!draftPackageJson) {
   console.warn('No package.json file found, skipping updating version');

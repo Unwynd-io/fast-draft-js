@@ -127,9 +127,10 @@ const getFirstDraftBlock = (element, isFirst = true) => {
   return null;
 }
 
-const getLazyLoadedBlocks = ({editorState, blocks, initialBlockKey  }) => {
+
+const getLazyLoadedBlockIndexes = ({editorState, blocks, initialBlockKey  }) => {
   
-  let lazyLoadBlocks = [];
+  let lazyLoadBlockIndexes = [];
 
   const editorSelection = editorState.getSelection();
   const startOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getStartKey());
@@ -180,53 +181,161 @@ const getLazyLoadedBlocks = ({editorState, blocks, initialBlockKey  }) => {
    * Map the lazy blocks
    */
 
-  const lazySlice = blocks.slice(start, end);
+  // const lazySlice = blocks.slice(start, end);
   const FIRST_BLOCK = 0;
   const LAST_BLOCK = blocks.length - 1;
 
   if (start > FIRST_BLOCK) {
     console.log('[f] start > FIRST_BLOCK, adding first block')
-    lazyLoadBlocks.push(blocks[FIRST_BLOCK]);
+    lazyLoadBlockIndexes.push(FIRST_BLOCK);
   }
 
   // Start selection off screen (ABOVE)
   if (startSelectionExists && (startOffsetBlockIndex < start && startOffsetBlockIndex !== FIRST_BLOCK)) {
     console.log('[f] loading START selection off screen ABOVE')
-    lazyLoadBlocks.push(blocks[startOffsetBlockIndex]);
+    lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (ABOVE)
   if (endSelectionExists && ((endOffsetBlockIndex < start && endOffsetBlockIndex !== FIRST_BLOCK)
   && endOffsetBlockIndex !== startOffsetBlockIndex)) {
     console.log('[f] loading END selection off screen ABOVE')
-    lazyLoadBlocks.push(blocks[endOffsetBlockIndex]);
+    lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
   // Loading the slice
-  lazyLoadBlocks = lazyLoadBlocks.concat(lazySlice);
+  // lazyLoadBlockIndexes = lazyLoadBlockIndexes.concat(lazySlice);
+  for (let i = start; i < end; i++) {
+    lazyLoadBlockIndexes.push(i);
+  }
+
 
   // Start selection off screen (BELOW)
   if (startSelectionExists && (startOffsetBlockIndex > end && startOffsetBlockIndex !== LAST_BLOCK)) {
     console.log('[f] loading START selection off screen BELOW')
-    lazyLoadBlocks.push(blocks[startOffsetBlockIndex]);
+    lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (BELOW)
   if (endSelectionExists &&  ((endOffsetBlockIndex > end && endOffsetBlockIndex !== LAST_BLOCK)
     && endOffsetBlockIndex !== startOffsetBlockIndex)) {
     console.log('[f] loading END selection off screen BELOW')
-    lazyLoadBlocks.push(blocks[endOffsetBlockIndex]);
+    lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
   if (end < LAST_BLOCK + 1) {
     console.log('[f] end < LAST_BLOCK, loading last block')
-    lazyLoadBlocks.push(blocks[LAST_BLOCK]);
+    lazyLoadBlockIndexes.push(LAST_BLOCK);
   }
 
+  console.log('[f] GET INDEXES, CALCULTATED: ', {lazyLoadBlockIndexes})
 
-  return lazyLoadBlocks;
+
+  return lazyLoadBlockIndexes;
 
 }
+
+
+// const getLazyLoadedBlocks = ({editorState, blocks, initialBlockKey  }) => {
+  
+//   let lazyLoadBlocks = [];
+
+//   const editorSelection = editorState.getSelection();
+//   const startOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getStartKey());
+//   const endOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getEndKey());
+//   const startSelectionExists = startOffsetBlockIndex !== -1;
+//   const endSelectionExists = endOffsetBlockIndex !== -1;
+
+//   const lazyLoadBlockIndex = blocks.findIndex(block => block.key === initialBlockKey);
+
+//   console.log('[f] getLazyLoadedBlocks - props', {
+//     lazyLoadBlockIndex,
+//     startOffsetBlockIndex,
+//     endOffsetBlockIndex,
+//     blockOnIndex: blocks[lazyLoadBlockIndex],
+//     initialBlockKey,
+//     blocks,
+//    })
+
+//   const BLOCK_RANGE = Math.floor(MAX_BLOCKS_TO_DISPLAY / 2);
+
+//   /*
+//    * Calculate lazy blocks
+//    */ 
+
+//   let start = lazyLoadBlockIndex - BLOCK_RANGE - LAZY_LOAD_OFFSET;
+//   let end = lazyLoadBlockIndex + BLOCK_RANGE + LAZY_LOAD_OFFSET;
+
+//   let difference = 0;
+
+//   if (start < 0) {
+//     difference = Math.abs(start);
+//     start = 0;
+//     end += difference;
+//   }
+
+//   if (end > blocks.length) {
+//     end = blocks.length;
+//     start = end - MAX_BLOCKS_TO_DISPLAY;
+
+//     if (start < 0) {
+//       start = 0;
+//     }
+//   }
+
+//   console.log('[f] %c calc lazy load blocks', 'color: #163432', {start, end, difference, startOffsetBlockIndex, endOffsetBlockIndex});
+
+//   /*
+//    * Map the lazy blocks
+//    */
+
+//   const lazySlice = blocks.slice(start, end);
+//   const FIRST_BLOCK = 0;
+//   const LAST_BLOCK = blocks.length - 1;
+
+//   if (start > FIRST_BLOCK) {
+//     console.log('[f] start > FIRST_BLOCK, adding first block')
+//     lazyLoadBlocks.push(blocks[FIRST_BLOCK]);
+//   }
+
+//   // Start selection off screen (ABOVE)
+//   if (startSelectionExists && (startOffsetBlockIndex < start && startOffsetBlockIndex !== FIRST_BLOCK)) {
+//     console.log('[f] loading START selection off screen ABOVE')
+//     lazyLoadBlocks.push(blocks[startOffsetBlockIndex]);
+//   }
+
+//   // End selection off screen (ABOVE)
+//   if (endSelectionExists && ((endOffsetBlockIndex < start && endOffsetBlockIndex !== FIRST_BLOCK)
+//   && endOffsetBlockIndex !== startOffsetBlockIndex)) {
+//     console.log('[f] loading END selection off screen ABOVE')
+//     lazyLoadBlocks.push(blocks[endOffsetBlockIndex]);
+//   }
+
+//   // Loading the slice
+//   lazyLoadBlocks = lazyLoadBlocks.concat(lazySlice);
+
+//   // Start selection off screen (BELOW)
+//   if (startSelectionExists && (startOffsetBlockIndex > end && startOffsetBlockIndex !== LAST_BLOCK)) {
+//     console.log('[f] loading START selection off screen BELOW')
+//     lazyLoadBlocks.push(blocks[startOffsetBlockIndex]);
+//   }
+
+//   // End selection off screen (BELOW)
+//   if (endSelectionExists &&  ((endOffsetBlockIndex > end && endOffsetBlockIndex !== LAST_BLOCK)
+//     && endOffsetBlockIndex !== startOffsetBlockIndex)) {
+//     console.log('[f] loading END selection off screen BELOW')
+//     lazyLoadBlocks.push(blocks[endOffsetBlockIndex]);
+//   }
+
+//   if (end < LAST_BLOCK + 1) {
+//     console.log('[f] end < LAST_BLOCK, loading last block')
+//     lazyLoadBlocks.push(blocks[LAST_BLOCK]);
+//   }
+
+
+//   return lazyLoadBlocks;
+
+// }
 
 
 /**
@@ -299,20 +408,23 @@ const getShouldComponentUpdate = (prevProps, nextProps) => {
   const nextContent = nextEditorState.getCurrentContent();
   const prevDecorator = prevEditorState.getDecorator();
   const nextDecorator = nextEditorState.getDecorator();
+  const prevSelection = prevEditorState.getSelection();
+  const nextSelection = nextEditorState.getSelection();
 
   console.log('[f] SHOULD UPDATE? FINAL STEP', {
     result: wasComposing !== nowComposing ||
     prevContent !== nextContent ||
     prevDecorator !== nextDecorator ||
-    nextEditorState.mustForceSelection() 
-
+    nextEditorState.mustForceSelection() ||
+    prevSelection !== nextSelection
   })
 
   return (
     wasComposing !== nowComposing ||
     prevContent !== nextContent ||
     prevDecorator !== nextDecorator ||
-    nextEditorState.mustForceSelection()
+    nextEditorState.mustForceSelection() ||
+    prevSelection !== nextSelection
   );
 }
 
@@ -327,6 +439,9 @@ const DraftEditorContents = React.memo((props) => {
   // const [outputBlocks, setOutputBlocks] = React.useState([]);
   const initialCurrentLazyLoadKey = 'RANDOM_STUFF_INITIAL'
   const [currentLazyLoadKey, setCurrentLazyLoadKey] = React.useState(initialCurrentLazyLoadKey);
+
+  const [outputBlockIndexes, setOutputBlockIndexes] = React.useState([]);
+
 
   /*
    * Refresh the observers on scroll
@@ -345,6 +460,10 @@ const DraftEditorContents = React.memo((props) => {
       bottomElm: observedElmBottom.current,
       observerTop: observerLazyTop.current,
       observerBottom: observerLazyBottom.current,
+      contents: contentsRef?.current?.children,
+      firstChild: contentsRef?.current?.firstChild,
+      lastChild: contentsRef?.current?.lastChild,
+      outputBlockIndexes,
     })
 
     // TODO: improve performance on state change when we don't need to recalculate lazyBlocks
@@ -352,7 +471,7 @@ const DraftEditorContents = React.memo((props) => {
     //   this.setState({...this.state, shouldRecalculateLazyLoad: false});
     // } else 
     
-    if (shouldLazyLoad) {
+    if (shouldLazyLoad && !!contentsRef?.current?.lastChild) {
       // let firstChild = getNextSibling(getFirstDraftBlock(this.contentsRef?.current?.firstChild, true), LAZY_LOAD_OFFSET);
       
       let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
@@ -426,8 +545,40 @@ const DraftEditorContents = React.memo((props) => {
     }
 
 
-  }, [currentLazyLoadKey, props?.editorState?.getCurrentContent()?.getBlockMap()]);
+  }, [outputBlockIndexes]);
 
+
+  /*
+   * Calculate indexes to render
+   */
+
+  React.useLayoutEffect(() => {
+    const blocksAsArray = props.editorState.getCurrentContent().getBlocksAsArray();
+
+    console.log('[f] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blocksAsArray, props})
+
+    let outputBlockIndexes = [];
+    
+    if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
+      outputBlockIndexes = getLazyLoadedBlockIndexes({editorState: props.editorState, blocks: blocksAsArray, initialBlockKey: currentLazyLoadKey})
+
+        // // TODO: try and leave first and last block in the array
+        // // TODO: earlier lazy loading
+        // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+        // TODO: for scroll to ref - add an initial lazy block key as prop 
+
+        // TODO: for hidden clauses - skip display:none blocks
+        // TODO: try "display: none" instead of removing blocks from container
+      } else if (!currentLazyLoadKey || initialCurrentLazyLoadKey === currentLazyLoadKey) {
+        let lazyLoadBlocks = blocksAsArray.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+        outputBlockIndexes = Array.from({length: lazyLoadBlocks.length}, (v, k) => k);
+      }
+
+      setOutputBlockIndexes(outputBlockIndexes);
+
+      console.log('[f] LAYOUT FINISHED ', {outputBlockIndexes})
+
+  }, [currentLazyLoadKey, props])
 
   // React.useEffect(() => {
 
@@ -633,7 +784,7 @@ const DraftEditorContents = React.memo((props) => {
    * Render
    */ 
 
-  console.log('[f] useLayoutEffect - props', {currentLazyLoadKey, props})
+  console.log('[f] %c render - props', 'color: #777', {currentLazyLoadKey, props, outputBlockIndexes})
     
   const {
     blockRenderMap,
@@ -759,23 +910,34 @@ const DraftEditorContents = React.memo((props) => {
     lastWrapperTemplate = wrapperTemplate;
   }
 
-  // Get 25 blocks above and below currentLazyLoadKey
   let lazyLoadBlocks = [];
-  if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
-    lazyLoadBlocks = getLazyLoadedBlocks({editorState: props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
+  // if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
+  //   lazyLoadBlocks = getLazyLoadedBlocks({editorState: props.editorState, blocks: processedBlocks, initialBlockKey: currentLazyLoadKey})
 
-    // // TODO: try and leave first and last block in the array
-    // // TODO: earlier lazy loading
-    // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
-    // TODO: for scroll to ref - add an initial lazy block key as prop 
+  //   // // TODO: try and leave first and last block in the array
+  //   // // TODO: earlier lazy loading
+  //   // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+  //   // TODO: for scroll to ref - add an initial lazy block key as prop 
 
-    // TODO: for hidden clauses - skip display:none blocks
-    // TODO: try "display: none" instead of removing blocks from container
-  } else if (!currentLazyLoadKey || initialCurrentLazyLoadKey === currentLazyLoadKey) {
-    lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+  //   // TODO: for hidden clauses - skip display:none blocks
+  //   // TODO: try "display: none" instead of removing blocks from container
+  // } else if (!currentLazyLoadKey || initialCurrentLazyLoadKey === currentLazyLoadKey) {
+  //   lazyLoadBlocks = processedBlocks.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+  // }
+
+  for (let i = 0; i < outputBlockIndexes.length; i++) {
+    
+    if (i % 10 === 0) {
+      console.log('[f] inserting lazy block (every 10th log)', {i, index: outputBlockIndexes[i], block: processedBlocks[outputBlockIndexes[i]]})
+    }
+    const block = processedBlocks[outputBlockIndexes[i]];
+    if (block) {
+      lazyLoadBlocks.push(block);
+    }
   }
 
-  console.log('[f] The Lazy Block Loading Key:', currentLazyLoadKey, content.getBlockForKey(currentLazyLoadKey)?.text)
+  console.log('[f] render after processing:', {currentLazyLoadKey, contextText: content.getBlockForKey(currentLazyLoadKey)?.text, 
+    processedBlocks, outputBlockIndexes, lazyLoadBlocks, blocksAsArray })
 
   // Group contiguous runs of blocks that have the same wrapperTemplate
   const outputBlocks = [];
@@ -820,77 +982,94 @@ const DraftEditorContents = React.memo((props) => {
     }
   }
 
+  console.log('[f] final outputBlocks', {outputBlocks})
+
 
   return (
     <div data-contents="true" ref={contentsRef}>
       {outputBlocks}
     </div>
   );
-});
-// , (prevProps, nextProps) => {
+}
 
-//   return !getShouldComponentUpdate(prevProps, nextProps);
+// !the component will not recieve new selection from props if ONLY the selection changes (even with re-render), so copy-paste off-screen won't work because the blocks will not be lazily-loaded properly 
 
-//   console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {prevProps, nextProps, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+/*
+ *
+ *
+ * If you provide a custom arePropsEqual implementation, you must compare every prop, including functions. Functions often close over the props and state of parent components. If you return true when oldProps.onClick !== newProps.onClick, your component will keep “seeing” the props and state from a previous render inside its onClick handler, leading to very confusing bugs.
+ * Avoid doing deep equality checks inside arePropsEqual unless you are 100% sure that the data structure you’re working with has a known limited depth. Deep equality checks can become incredibly slow and can freeze your app for many seconds if someone changes the data structure later.
+ *
+ * 
+ */
 
-//   const prevEditorState = prevProps.editorState;
-//   const nextEditorState = nextProps.editorState;
 
-//   const prevDirectionMap = prevEditorState.getDirectionMap();
-//   const nextDirectionMap = nextEditorState.getDirectionMap();
+// TODO: fix dragging selection issue when the initial selection is on another block and user starts dragging from another block
 
-//   // Text direction has changed for one or more blocks. We must re-render.
-//   if (prevDirectionMap !== nextDirectionMap) {
-//     console.log('[f] return false 1')
-//     return false;
-//   }
+, (prevProps, nextProps) => {
 
-//   const didHaveFocus = prevEditorState.getSelection().getHasFocus();
-//   const nowHasFocus = nextEditorState.getSelection().getHasFocus();
+  return !getShouldComponentUpdate(prevProps, nextProps);
 
-//   if (didHaveFocus !== nowHasFocus) {
-//     console.log('[f] return false 2')
-//     return false;
-//   }
+  console.log('[f] shouldComponentUpdate IN DraftEditorContents-core.react.js', {prevProps, nextProps, nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
 
-//   const nextNativeContent = nextEditorState.getNativelyRenderedContent();
+  const prevEditorState = prevProps.editorState;
+  const nextEditorState = nextProps.editorState;
 
-//   const wasComposing = prevEditorState.isInCompositionMode();
-//   const nowComposing = nextEditorState.isInCompositionMode();
+  const prevDirectionMap = prevEditorState.getDirectionMap();
+  const nextDirectionMap = nextEditorState.getDirectionMap();
+
+  // Text direction has changed for one or more blocks. We must re-render.
+  if (prevDirectionMap !== nextDirectionMap) {
+    console.log('[f] return false 1')
+    return false;
+  }
+
+  const didHaveFocus = prevEditorState.getSelection().getHasFocus();
+  const nowHasFocus = nextEditorState.getSelection().getHasFocus();
+
+  if (didHaveFocus !== nowHasFocus) {
+    console.log('[f] return false 2')
+    return false;
+  }
+
+  const nextNativeContent = nextEditorState.getNativelyRenderedContent();
+
+  const wasComposing = prevEditorState.isInCompositionMode();
+  const nowComposing = nextEditorState.isInCompositionMode();
   
-//   // const prevState = this.state;
-//   // const stateChanged = prevState !== nextState;
+  // const prevState = this.state;
+  // const stateChanged = prevState !== nextState;
 
-//   // If the state is unchanged or we're currently rendering a natively
-//   // rendered state, there's nothing new to be done.
-//   if (
-//     prevEditorState === nextEditorState ||
-//       (nextNativeContent !== null && nextEditorState.getCurrentContent() === nextNativeContent) ||
-//       (wasComposing && nowComposing)
-//   ) {
-//     console.log('[f] RETURNING TRUE 1', {wasComposing, nowComposing});
-//     return true;
-//   }
+  // If the state is unchanged or we're currently rendering a natively
+  // rendered state, there's nothing new to be done.
+  if (
+    prevEditorState === nextEditorState ||
+      (nextNativeContent !== null && nextEditorState.getCurrentContent() === nextNativeContent) ||
+      (wasComposing && nowComposing)
+  ) {
+    console.log('[f] RETURNING TRUE 1', {wasComposing, nowComposing});
+    return true;
+  }
 
-//   const prevContent = prevEditorState.getCurrentContent();
-//   const nextContent = nextEditorState.getCurrentContent();
-//   const prevDecorator = prevEditorState.getDecorator();
-//   const nextDecorator = nextEditorState.getDecorator();
+  const prevContent = prevEditorState.getCurrentContent();
+  const nextContent = nextEditorState.getCurrentContent();
+  const prevDecorator = prevEditorState.getDecorator();
+  const nextDecorator = nextEditorState.getDecorator();
 
-//   console.log('[f] SHOULD SKIP? FINAL STEP', {
-//     result: wasComposing === nowComposing &&
-//     prevContent === nextContent &&
-//     prevDecorator === nextDecorator &&
-//     !nextEditorState.mustForceSelection(),
-//   })
+  console.log('[f] SHOULD SKIP? FINAL STEP', {
+    result: wasComposing === nowComposing &&
+    prevContent === nextContent &&
+    prevDecorator === nextDecorator &&
+    !nextEditorState.mustForceSelection(),
+  })
 
-//   return (
-//     wasComposing === nowComposing &&
-//     prevContent === nextContent &&
-//     prevDecorator === nextDecorator &&
-//     !nextEditorState.mustForceSelection()
-//   );
-// });
+  return (
+    wasComposing === nowComposing &&
+    prevContent === nextContent &&
+    prevDecorator === nextDecorator &&
+    !nextEditorState.mustForceSelection()
+  );
+});
 
 // export default DraftEditorContents;
 module.exports = DraftEditorContents;

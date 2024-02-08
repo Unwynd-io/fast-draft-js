@@ -1,7 +1,7 @@
 {
   "name": "draft-js",
   "description": "A React framework for building text editors.",
-  "version": "0.11.7-FY58",
+  "version": "0.11.7-6",
   "keywords": [
     "draftjs",
     "editor",
@@ -22,7 +22,7 @@
   "scripts": {
     "prepublish": "npm run build",
     "pretest": "node node_modules/fbjs-scripts/node/check-dev-engines.js package.json",
-    "build": "gulp",
+    "build": "node scripts/update-package-version.js && gulp",
     "dev": "gulp dev",
     "postbuild": "node node_modules/fbjs-scripts/node/check-lib-requires.js lib",
     "lint": "eslint .",
