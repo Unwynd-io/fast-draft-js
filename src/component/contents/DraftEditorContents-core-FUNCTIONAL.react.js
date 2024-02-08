@@ -410,13 +410,16 @@ const getShouldComponentUpdate = (prevProps, nextProps) => {
   const nextDecorator = nextEditorState.getDecorator();
   const prevSelection = prevEditorState.getSelection();
   const nextSelection = nextEditorState.getSelection();
+  const prevFocusKey = prevEditorState.getBlockKeyToScrollTo();
+  const nextFocusKey = nextEditorState.getBlockKeyToScrollTo();
 
   console.log('[f] SHOULD UPDATE? FINAL STEP', {
     result: wasComposing !== nowComposing ||
     prevContent !== nextContent ||
     prevDecorator !== nextDecorator ||
     nextEditorState.mustForceSelection() ||
-    prevSelection !== nextSelection
+    prevSelection !== nextSelection ||
+    prevFocusKey !== nextFocusKey
   })
 
   return (
@@ -424,9 +427,15 @@ const getShouldComponentUpdate = (prevProps, nextProps) => {
     prevContent !== nextContent ||
     prevDecorator !== nextDecorator ||
     nextEditorState.mustForceSelection() ||
-    prevSelection !== nextSelection
+    prevSelection !== nextSelection ||
+    prevFocusKey !== nextFocusKey
   );
 }
+
+// let editorState = debug_file.editor
+// debug_file.set(editorState, {
+//   currentLazyLoadKey: '6i4hg'
+// })
 
 const DraftEditorContents = React.memo((props) => {
 
@@ -437,11 +446,130 @@ const DraftEditorContents = React.memo((props) => {
   const observedElmBottom = React.useRef(null);
 
   // const [outputBlocks, setOutputBlocks] = React.useState([]);
-  const initialCurrentLazyLoadKey = 'RANDOM_STUFF_INITIAL'
-  const [currentLazyLoadKey, setCurrentLazyLoadKey] = React.useState(initialCurrentLazyLoadKey);
+  // const initialCurrentLazyLoadKey = 'RANDOM_STUFF_INITIAL'
+  const [currentLazyLoadKey, setCurrentLazyLoadKey] = React.useState(null);
+  const [currentFocusBlockKey, setCurrentFocusBlockKey] = React.useState(null);
+
+  const canObserve = React.useRef(true);
+  const setCanObserve = (value) => {
+    canObserve.current = value;
+  }
+
+  // const currentLazyLoadKey = props.editorState.getCurrentLazyLoadKey();
+  // const setCurrentLazyLoadKey = (key: string) => {
+    // setEditorState()
+    // const editorState = EditorState.set(props.editorState, {
+    //   currentLazyLoadKey: key
+    // });
+
+    // props.editorState.setCurrentLazyLoadKey(key);
+    /*
+    props.editorState.set(props.editorState, {
+      currentLazyLoadKey: key
+    });
+    */
+  // }
 
   const [outputBlockIndexes, setOutputBlockIndexes] = React.useState([]);
 
+  const propBlockKeyToScrollTo = '6i4hg';
+  // const [blockKeyToScrollTo, setBlockKeyToScrollTo] = React.useState(propBlockKeyToScrollTo);
+  const blockKeyToScrollTo = props.editorState.getBlockKeyToScrollTo();
+
+
+  /*
+   * Handlers
+   */
+
+  const getBlockByKey = (blockKey) => {
+    return document.querySelector(`[data-offset-key="${blockKey}-0-0"]`);
+  }
+
+  const handleFocusBlock = (blockKey) => {
+    console.log('[f] handleFocusBlock', {blockKey})
+
+    const block = getBlockByKey(blockKey);
+    console.log('[f] handleFocusBlock', {block})
+
+    if (block) {
+      block.scrollIntoView({behavior: 'instant', block: 'center'});
+    }
+  }
+
+  const handleUnobserve = (observer, element) => {
+    console.log('[f] %c disconnecting obersever handleUnobserve', 'color: #234632', {observer, element})
+
+    if (observer) {
+      console.log('[f] -disconnect')
+      observer.unobserve(element);
+    }
+  }
+
+  const handleSetupObservers = () => {
+    let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+    let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+
+    console.log('[f] %c OBSERVING NEW', 'color: #532523', {
+      nowKey: currentLazyLoadKey,
+      observerTop: observerLazyTop.current,
+      observerBottom: observerLazyBottom.current,
+      firstChild,
+      lastChild
+    })
+
+    if(!firstChild || !lastChild) {
+      console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
+      return;
+    }
+
+    // if (observerLazyTop.current) {
+    //   console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyTop.current,
+    //   topElm: observedElmTop.current,
+    //   })
+    //   observerLazyTop.current.unobserve(observedElmTop.current);
+    // }
+    handleUnobserve(observerLazyTop.current, observedElmTop.current);
+    handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
+
+    // if (observerLazyBottom.current) {
+    //   console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyBottom.current,
+    //   bottomElm: observedElmBottom.current
+    //   })
+    //   // this.observerLazyBottom.current.unobserve(this.observedElmTop.current);
+    //   observerLazyBottom.current.unobserve(observedElmBottom.current);
+    // }
+
+    const observerCallback = (name) => getHandleIntersection((entry, observer) => {
+      console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+        entry, 
+        observer,
+        lastChild,
+        entryTarget: entry?.target,
+        entryTargetDataset: entry?.target?.dataset,
+      });
+
+      if (entry.isIntersecting) {
+        observer.disconnect();
+        const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+        console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+      // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
+
+        setCurrentLazyLoadKey(blockKey);
+      }
+    })
+
+    observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
+    observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
+
+    observedElmTop.current = firstChild;
+    observedElmBottom.current = lastChild;
+
+    observerLazyTop.current.observe(observedElmTop.current);
+    // this.observerLazyBottom.current.observe(this.observedElmTop.current);
+    observerLazyBottom.current.observe(observedElmBottom.current);
+
+    console.log('[f] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
+  }
 
   /*
    * Refresh the observers on scroll
@@ -456,6 +584,8 @@ const DraftEditorContents = React.memo((props) => {
       currentLazyLoadKey,
       currentBlockMapArr: currentBlockMap.toArray(),
       currentProps: props,
+      blockKeyToScrollTo,
+      currentFocusBlockKey,
       topElm: observedElmTop.current,
       bottomElm: observedElmBottom.current,
       observerTop: observerLazyTop.current,
@@ -470,82 +600,88 @@ const DraftEditorContents = React.memo((props) => {
     // if (this.state.shouldRecalculateLazyLoad) {
     //   this.setState({...this.state, shouldRecalculateLazyLoad: false});
     // } else 
+
+    /*
+     * Setting the observers
+     */
     
-    if (shouldLazyLoad && !!contentsRef?.current?.lastChild) {
-      // let firstChild = getNextSibling(getFirstDraftBlock(this.contentsRef?.current?.firstChild, true), LAZY_LOAD_OFFSET);
-      
-      let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
-      let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+    if (canObserve.current && shouldLazyLoad && !!contentsRef?.current?.lastChild ) {
+      // let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+      // let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
 
-      console.log('[f] %c OBSERVING NEW', 'color: #532523', {
-        // wasKey: prevState.currentLazyLoadKey,
-        nowKey: currentLazyLoadKey,
-        observerTop: observerLazyTop.current,
-        observerBottom: observerLazyBottom.current,
-        firstChild,
-        lastChild
-      })
-      // startObserver(false);
+      // console.log('[f] %c OBSERVING NEW', 'color: #532523', {
+      //   nowKey: currentLazyLoadKey,
+      //   observerTop: observerLazyTop.current,
+      //   observerBottom: observerLazyBottom.current,
+      //   firstChild,
+      //   lastChild
+      // })
 
-      if(!firstChild || !lastChild) {
-        console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
-        return;
-      }
+      // if(!firstChild || !lastChild) {
+      //   console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
+      //   return;
+      // }
 
-      if (observerLazyTop.current) {
-        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyTop.current,
-        topElm: observedElmTop.current,
-        })
-        observerLazyTop.current.unobserve(observedElmTop.current);
-      }
+      // // if (observerLazyTop.current) {
+      // //   console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyTop.current,
+      // //   topElm: observedElmTop.current,
+      // //   })
+      // //   observerLazyTop.current.unobserve(observedElmTop.current);
+      // // }
+      // handleUnobserve(observerLazyTop.current, observedElmTop.current);
+      // handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
 
-      if (observerLazyBottom.current) {
-        console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyBottom.current,
-        bottomElm: observedElmBottom.current
-        })
-        // this.observerLazyBottom.current.unobserve(this.observedElmTop.current);
-        observerLazyBottom.current.unobserve(observedElmBottom.current);
-      }
+      // // if (observerLazyBottom.current) {
+      // //   console.log('[f] %c SHOULD DISCONNECT OBSERVER', 'color: #321553', {observer: observerLazyBottom.current,
+      // //   bottomElm: observedElmBottom.current
+      // //   })
+      // //   // this.observerLazyBottom.current.unobserve(this.observedElmTop.current);
+      // //   observerLazyBottom.current.unobserve(observedElmBottom.current);
+      // // }
 
-      const observerCallback = (name) => getHandleIntersection((entry, observer) => {
-        console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
-          entry, 
-          observer,
-          lastChild,
-          entryTarget: entry?.target,
-          entryTargetDataset: entry?.target?.dataset,
-        });
+      // const observerCallback = (name) => getHandleIntersection((entry, observer) => {
+      //   console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+      //     entry, 
+      //     observer,
+      //     lastChild,
+      //     entryTarget: entry?.target,
+      //     entryTargetDataset: entry?.target?.dataset,
+      //   });
 
-        if (entry.isIntersecting) {
-          observer.disconnect();
-          const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-          console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
-        // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
+      //   if (entry.isIntersecting) {
+      //     observer.disconnect();
+      //     const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
+      //     console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+      //   // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
 
-          // this.setState({
-          //   // shouldRecalculateLazyLoad: true,
-          //   currentLazyLoadKey: blockKey
-          // });
+      //     setCurrentLazyLoadKey(blockKey);
+      //   }
+      // })
 
-          setCurrentLazyLoadKey(blockKey);
-        }
-      })
+      // observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
+      // observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
 
-      observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
-      observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
+      // observedElmTop.current = firstChild;
+      // observedElmBottom.current = lastChild;
 
-      observedElmTop.current = firstChild;
-      observedElmBottom.current = lastChild;
+      // observerLazyTop.current.observe(observedElmTop.current);
+      // // this.observerLazyBottom.current.observe(this.observedElmTop.current);
+      // observerLazyBottom.current.observe(observedElmBottom.current);
 
-      observerLazyTop.current.observe(observedElmTop.current);
-      // this.observerLazyBottom.current.observe(this.observedElmTop.current);
-      observerLazyBottom.current.observe(observedElmBottom.current);
+      // console.log('[f] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
 
-      console.log('[f] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
+      handleSetupObservers();
+    }
+
+    if (currentFocusBlockKey > '' && !!getBlockByKey(currentFocusBlockKey)) {
+      handleFocusBlock(currentFocusBlockKey);
+      setCanObserve(true);
+      handleSetupObservers();
+      setCurrentFocusBlockKey(null);
     }
 
 
-  }, [outputBlockIndexes]);
+  }, [outputBlockIndexes, currentFocusBlockKey]);
 
 
   /*
@@ -555,30 +691,61 @@ const DraftEditorContents = React.memo((props) => {
   React.useEffect(() => {
     const blocksAsArray = props.editorState.getCurrentContent().getBlocksAsArray();
 
-    console.log('[f] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blocksAsArray, props})
+    console.log('[f] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blockKeyToScrollTo, blocksAsArray, props})
 
     let outputBlockIndexes = [];
-    
-    if(currentLazyLoadKey > '' && initialCurrentLazyLoadKey !== currentLazyLoadKey) {
+
+    if(currentLazyLoadKey > '') {
       outputBlockIndexes = getLazyLoadedBlockIndexes({editorState: props.editorState, blocks: blocksAsArray, initialBlockKey: currentLazyLoadKey})
-
-        // // TODO: try and leave first and last block in the array
-        // // TODO: earlier lazy loading
-        // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
-        // TODO: for scroll to ref - add an initial lazy block key as prop 
-
-        // TODO: for hidden clauses - skip display:none blocks
-        // TODO: try "display: none" instead of removing blocks from container
-      } else if (!currentLazyLoadKey || initialCurrentLazyLoadKey === currentLazyLoadKey) {
-        let lazyLoadBlocks = blocksAsArray.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
-        outputBlockIndexes = Array.from({length: lazyLoadBlocks.length}, (v, k) => k);
-      }
-
       setOutputBlockIndexes(outputBlockIndexes);
 
-      console.log('[f] LAYOUT FINISHED ', {outputBlockIndexes})
 
-  }, [currentLazyLoadKey, props])
+      // // TODO: try and leave first and last block in the array
+      // // TODO: earlier lazy loading
+      // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
+      // TODO: for scroll to ref - add an initial lazy block key as prop 
+
+      // TODO: for hidden clauses - skip display:none blocks
+      // TODO: try "display: none" instead of removing blocks from container
+    } else if (currentLazyLoadKey === null) {
+      let lazyLoadBlocks = blocksAsArray.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+      outputBlockIndexes = Array.from({length: lazyLoadBlocks.length}, (v, k) => k);
+      setOutputBlockIndexes(outputBlockIndexes);
+    } 
+
+    console.log('[f] LAYOUT FINISHED ', {outputBlockIndexes})
+  }, [currentLazyLoadKey, props.editorState])
+
+
+
+  React.useEffect(() => {
+
+    if (blockKeyToScrollTo > '') {
+      if (blockKeyToScrollTo !== currentLazyLoadKey) {
+        // not observe
+        handleUnobserve(observerLazyTop.current, observedElmTop.current);
+        handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
+        setCanObserve(false);
+        setCurrentFocusBlockKey(blockKeyToScrollTo);
+        setCurrentLazyLoadKey(blockKeyToScrollTo);
+        // focus in the view - scroll to it
+        // observe again
+
+        
+        // setOutputBlockIndexes([]);
+        console.log('[f] SETTING THE KEY AND FOCUSING ON BLOCK', {currentLazyLoadKey, props})
+        // TODO: focus after the blocks are rendered
+      } else {
+        // TODO: focus with JS
+
+        console.log('[f] SHOULD FOCUS ON BLOCK', {currentLazyLoadKey, props})
+        handleFocusBlock(blockKeyToScrollTo);
+
+        // TODO: check collapsed clauses
+      }
+
+    }
+  }, [blockKeyToScrollTo]) // props.blockKeyToScrollTo
 
   // React.useEffect(() => {
 
@@ -798,7 +965,6 @@ const DraftEditorContents = React.memo((props) => {
     textDirectionality,
   } = props;
 
-  const blockKeyToScrollTo = '6i4hg';
 
   const content = editorState.getCurrentContent();
   const selection = editorState.getSelection();

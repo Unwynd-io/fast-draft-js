@@ -33,6 +33,7 @@ const {OrderedSet, Record, Stack, OrderedMap, List} = Immutable;
 // (See the types defined below.)
 type BaseEditorStateConfig = {
   allowUndo?: boolean,
+  blockKeyToScrollTo?: ?string,
   decorator?: ?DraftDecoratorType,
   directionMap?: ?OrderedMap<string, string>,
   forceSelection?: boolean,
@@ -48,6 +49,7 @@ type BaseEditorStateConfig = {
 
 type BaseEditorStateRawConfig = {
   allowUndo?: boolean,
+  blockKeyToScrollTo?: ?string,
   decorator?: ?DraftDecoratorType,
   directionMap?: ?{...},
   forceSelection?: boolean,
@@ -81,6 +83,7 @@ type EditorStateChangeConfigType = {
 type EditorStateRecordType = {
   allowUndo: boolean,
   currentContent: ?ContentState,
+  blockKeyToScrollTo: ?string,
   decorator: ?DraftDecoratorType,
   directionMap: ?OrderedMap<string, string>,
   forceSelection: boolean,
@@ -98,6 +101,7 @@ type EditorStateRecordType = {
 const defaultRecord: EditorStateRecordType = {
   allowUndo: true,
   currentContent: null,
+  blockKeyToScrollTo: null,
   decorator: null,
   directionMap: null,
   forceSelection: false,
@@ -278,6 +282,10 @@ class EditorState {
     return this.getImmutable().get('selection');
   }
 
+  getBlockKeyToScrollTo(): ?string {
+    return this.getImmutable().get('blockKeyToScrollTo');
+  }
+
   getDecorator(): ?DraftDecoratorType {
     return this.getImmutable().get('decorator');
   }
@@ -357,6 +365,23 @@ class EditorState {
 
   getDirectionMap(): ?OrderedMap<any, any> {
     return this.getImmutable().get('directionMap');
+  }
+
+  /**
+   * Focus on block in the document view
+   */
+
+  static focusBlock(
+    editorState: EditorState,
+    blockKey: string,
+  ): EditorState {
+    return updateBlockKeyToScrollTo(editorState, blockKey);
+  }
+
+  static resetFocus(
+    editorState: EditorState,
+  ): EditorState {
+    return updateBlockKeyToScrollTo(editorState, null);
   }
 
   /**
@@ -593,6 +618,15 @@ class EditorState {
   getImmutable(): EditorStateRecord {
     return this._immutable;
   }
+}
+
+function updateBlockKeyToScrollTo(
+  editorState: EditorState,
+  blockKey: ?string,
+): EditorState {
+  return EditorState.set(editorState, {
+    blockKeyToScrollTo: blockKey
+  });
 }
 
 /**
