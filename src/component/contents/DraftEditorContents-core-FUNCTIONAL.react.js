@@ -80,6 +80,10 @@ const getHandleIntersection = (callback) => (entries, observer) => {
   });
 }
 
+const isElementList = (element) => {
+  return ['OL', 'UL'].includes(element.tagName);
+}
+
 const getPreviousSibling = (element, count, callback) => {
   console.log('[getPreviousSibling]', {element, elPreviousSibling: element.previousSibling, count})
 
@@ -90,6 +94,18 @@ const getPreviousSibling = (element, count, callback) => {
   }
 
   if (!newElement.previousSibling) {
+
+    const wrapperElement = newElement.parentElement.parentElement;
+
+    // Case for the list elements
+    if (wrapperElement.getAttribute('number-list-element') === 'true' && wrapperElement.previousSibling) {
+      console.log('[f] getting previous of wrapper element', {wrapperElement, wrapperPrev: wrapperElement.previousSibling, count})
+      return getPreviousSibling(wrapperElement.previousSibling, count - 1, callback);
+    } else if (isElementList(wrapperElement.parentElement) && wrapperElement.parentElement.previousSibling) {
+      console.log('[f] getting previous of wrapper element parent', {wrapperElementParent: wrapperElement.parentElement, wrapperPrev: wrapperElement.parentElement.previousSibling, count})
+      return getPreviousSibling(wrapperElement.parentElement.previousSibling, count - 1, callback);
+    }
+
     return newElement;
   }
 
@@ -97,14 +113,31 @@ const getPreviousSibling = (element, count, callback) => {
 }
 
 const getNextSibling = (element, count, callback) => {
+  console.log('[f] getnextSibling', {element, elNextSibling: element.nextSibling, count})
 
   const newElement = callback ? callback(element) : element;
+  console.log('[f] getnextSibling after callback', {newElement, elNextSibling: element.nextSibling, count})
 
   if (count === 0) {
     return newElement;
   }
   
   if (!newElement.nextSibling) {
+    
+    const wrapperElement = newElement.parentElement.parentElement;
+
+    // Case for the list elements
+    if (wrapperElement.getAttribute('number-list-element') === 'true') {
+      if (wrapperElement.nextSibling) {
+        console.log('[f] getting next of wrapper element', {wrapperElement, wrapperNext: wrapperElement.nextSibling, count})
+        return getNextSibling(wrapperElement.nextSibling, count - 1, callback);
+      } else if (isElementList(wrapperElement.parentElement) && wrapperElement.parentElement.nextSibling) {
+        console.log('[f] getting next of wrapper element parent', {wrapperElementParent: wrapperElement.parentElement, wrapperNext: wrapperElement.parentElement.nextSibling, count})
+        return getNextSibling(wrapperElement.parentElement.nextSibling, count - 1, callback);
+      }
+    }
+
+
     return newElement;
   }
 
@@ -112,7 +145,8 @@ const getNextSibling = (element, count, callback) => {
 }
 
 const getFirstDraftBlock = (element, isFirst = true) => {
-  if (element?.dataset?.offsetKey && !['OL', 'UL'].includes(element.tagName)) {
+  console.log('[f] getFirstDraftBlock', {element, isFirst})
+  if (element?.dataset?.offsetKey && !isElementList(element)) {
     return element;
   }
 
@@ -347,9 +381,19 @@ const DraftEditorContents = React.memo((props) => {
     }
   }
 
-  const handleSetupObservers = () => {
+  // FOR infinite scroll issue: 
+  // dtk6k - on the 3rd up, or quickly scroll up
+  // ?1rl32
+
+  // TODO: fix infinite scrolling (happens only if the observed element is a list element)
+  // TODO: fix issue when deleting a block that is currentLazyLoadKey? test
+
+  const handleCreateObservers = () => {
     let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
     let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+
+    window.__devTopElement = firstChild;
+    window.__devBottomElement = lastChild;
 
     console.log('[f] %c OBSERVING NEW', 'color: #532523', {
       nowKey: currentLazyLoadKey,
@@ -383,20 +427,27 @@ const DraftEditorContents = React.memo((props) => {
 
         // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
         /* ^ not sure if this code is the right idea for above.
-        const indexOfLazyBlock = lazyLoadBlocks.findIndex(block => block.key === blockKey);
-        if(indexOfLazyBlock == -1 || indexOfLazyBlock === 1 || indexOfLazyBlock === lazyLoadBlocks.length - 1) {
-          return;
-        }
-        const { anchorKey, focusKey } = selection;
-        const lazyBlock = lazyLoadBlocks[indexOfLazyBlock];
-        if(lazyBlock.key === anchorKey || lazyBlock.key === focusKey) {
-          return;
-        }
+          const indexOfLazyBlock = lazyLoadBlocks.findIndex(block => block.key === blockKey);
+          if(indexOfLazyBlock == -1 || indexOfLazyBlock === 1 || indexOfLazyBlock === lazyLoadBlocks.length - 1) {
+            return;
+          }
+          const { anchorKey, focusKey } = selection;
+          const lazyBlock = lazyLoadBlocks[indexOfLazyBlock];
+          if(lazyBlock.key === anchorKey || lazyBlock.key === focusKey) {
+            return;
+          }
         */
         
         setCurrentLazyLoadKey(blockKey);
       }
     })
+
+    const observerSettings = {
+      root: contentsRef.current.parentElement,
+      rootMargin: "170px 0px 170px 0px",
+    }
+
+    console.log('[f] observerSettings', {observerSettings})
 
     observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
     observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
@@ -446,13 +497,13 @@ const DraftEditorContents = React.memo((props) => {
     */
     
     if (canObserve.current && shouldLazyLoad && !!contentsRef?.current?.lastChild ) {
-      handleSetupObservers();
+      handleCreateObservers();
     }
 
     if (currentFocusBlockKey > '' && !!getBlockByKey(currentFocusBlockKey)) {
       handleFocusBlock(currentFocusBlockKey);
       setCanObserve(true);
-      handleSetupObservers();
+      handleCreateObservers();
       setCurrentFocusBlockKey(null);
     }
 
