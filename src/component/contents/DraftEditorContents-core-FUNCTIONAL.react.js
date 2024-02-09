@@ -41,9 +41,6 @@ type Props = {
   ...
 };
 
-// ! Lazy Loading Global Variables
-const MAX_BLOCKS_TO_DISPLAY = 50;
-const LAZY_LOAD_OFFSET = 5;
 
 /**
  * Provide default styling for list items. This way, lists will be styled with
@@ -71,6 +68,23 @@ const getListItemClasses = (
     'public/DraftStyleDefault/listRTL': direction === 'RTL',
   });
 };
+
+
+// TODO: move constants and utils to separate folders
+
+/*
+ * Constants
+ */
+
+const DRAFT_BLOCK_HEIGHT = 50; // ~47px
+const MAX_BLOCKS_TO_DISPLAY = 50;
+const LAZY_LOAD_BLOCK_OFFSET = 4;
+
+const MAX_SCROLL_OFFSET = LAZY_LOAD_BLOCK_OFFSET * DRAFT_BLOCK_HEIGHT;
+
+/*
+ * Utill methods
+ */
 
 const getHandleIntersection = (callback) => (entries, observer) => {
   console.log('[f] props of intersection', {entries, observer})
@@ -188,8 +202,8 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks, initialBlockKey}) => {
    * Calculate lazy blocks
    */ 
 
-  let start = lazyLoadBlockIndex - BLOCK_RANGE - LAZY_LOAD_OFFSET;
-  let end = lazyLoadBlockIndex + BLOCK_RANGE + LAZY_LOAD_OFFSET;
+  let start = lazyLoadBlockIndex - BLOCK_RANGE - LAZY_LOAD_BLOCK_OFFSET;
+  let end = lazyLoadBlockIndex + BLOCK_RANGE + LAZY_LOAD_BLOCK_OFFSET;
 
   let difference = 0;
 
@@ -346,6 +360,13 @@ const DraftEditorContents = React.memo((props) => {
   const [currentLazyLoadKey, setCurrentLazyLoadKey] = React.useState(null);
   const [currentFocusBlockKey, setCurrentFocusBlockKey] = React.useState(null);
 
+  // Only first "batch" is loaded
+  const isTopOfPageRef = React.useRef(true);
+  const isTopOfPage = isTopOfPageRef.current;
+  const setTopOfPage = (value) => {
+    isTopOfPageRef.current = value;
+  }
+
   const canObserve = React.useRef(true);
   const setCanObserve = (value) => {
     canObserve.current = value;
@@ -385,17 +406,15 @@ const DraftEditorContents = React.memo((props) => {
   // dtk6k - on the 3rd up, or quickly scroll up
   // ?1rl32
 
-  // TODO: fix infinite scrolling (happens only if the observed element is a list element)
-  // TODO: fix issue when deleting a block that is currentLazyLoadKey? test
 
   const handleCreateObservers = () => {
-    let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, true));
-    let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+    let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+    let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
 
     window.__devTopElement = firstChild;
     window.__devBottomElement = lastChild;
 
-    console.log('[f] %c OBSERVING NEW', 'color: #532523', {
+    console.log('[f] [scroll] %c OBSERVING NEW', 'color: #532523', {
       nowKey: currentLazyLoadKey,
       observerTop: observerLazyTop.current,
       observerBottom: observerLazyBottom.current,
@@ -412,7 +431,7 @@ const DraftEditorContents = React.memo((props) => {
     handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
 
     const observerCallback = (name) => getHandleIntersection((entry, observer) => {
-      console.log(`[f] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+      console.log(`[f] [scroll] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
         entry, 
         observer,
         lastChild,
@@ -423,7 +442,7 @@ const DraftEditorContents = React.memo((props) => {
       if (entry.isIntersecting) {
         observer.disconnect();
         const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-        console.log(`[f] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+        console.log(`[f] [scroll] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
 
         // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
         /* ^ not sure if this code is the right idea for above.
@@ -444,13 +463,13 @@ const DraftEditorContents = React.memo((props) => {
 
     const observerSettings = {
       root: contentsRef.current.parentElement,
-      rootMargin: "170px 0px 170px 0px",
+      rootMargin: "150px 0px 100px 0px",
     }
 
     console.log('[f] observerSettings', {observerSettings})
 
-    observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'));
-    observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'));
+    observerLazyTop.current = new IntersectionObserver(observerCallback('TOP'), observerSettings);
+    observerLazyBottom.current = new IntersectionObserver(observerCallback('BOTTOM'), observerSettings);
 
     observedElmTop.current = firstChild;
     observedElmBottom.current = lastChild;
@@ -458,7 +477,7 @@ const DraftEditorContents = React.memo((props) => {
     observerLazyTop.current.observe(observedElmTop.current);
     observerLazyBottom.current.observe(observedElmBottom.current);
 
-    console.log('[f] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
+    console.log('[f] [scroll] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
   }
 
   /*
@@ -469,7 +488,7 @@ const DraftEditorContents = React.memo((props) => {
     const currentBlockMap = props?.editorState?.getCurrentContent()?.getBlockMap();
     const shouldLazyLoad = currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
 
-    console.log('[f] %c useEffect, ', 'color: #123153', {
+    console.log('[f] [scroll] %c useEffect, ', 'color: #123153', {
       shouldLazyLoad,
       currentLazyLoadKey,
       currentBlockMapArr: currentBlockMap.toArray(),
@@ -500,7 +519,35 @@ const DraftEditorContents = React.memo((props) => {
       handleCreateObservers();
     }
 
-  }, [outputBlockIndexes]);
+  }, [outputBlockIndexes, props?.editorState?.getCurrentContent()?.getBlockMap()]);
+
+  /*
+   * Workaround for the scrollTop === 0 position, we should not allow the user to be at the top unless we are at the top of the page 
+   */
+
+  React.useEffect(() => {
+
+    const scrollElm = contentsRef.current.parentElement;
+
+    const handleScroll = (e) => {
+      // console.log('[f] [scroll] %c SCROLL EVENT', 'color: #849', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+
+      const currentScroll = scrollElm.scrollTop;
+
+      if (!isTopOfPage) {
+        if (currentScroll < MAX_SCROLL_OFFSET) {
+          console.log(`[f] [scroll] %c RESETTING SCROLL TO ${MAX_SCROLL_OFFSET}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+          scrollElm.scrollTop = MAX_SCROLL_OFFSET;
+        }
+      }
+    }
+
+    scrollElm.addEventListener('scroll', handleScroll);
+
+    return () => {
+      scrollElm.removeEventListener('scroll', handleScroll);
+    }
+  }, [isTopOfPage])
 
   /*
    * Focus on the block after loading the DOM
@@ -524,29 +571,41 @@ const DraftEditorContents = React.memo((props) => {
   React.useEffect(() => {
     const blocksAsArray = props.editorState.getCurrentContent().getBlocksAsArray();
 
-    console.log('[f] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blockKeyToScrollTo, blocksAsArray, props})
+    console.log('[f] [scroll] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blockKeyToScrollTo, blocksAsArray, props})
 
     let outputBlockIndexes = [];
+    let areIndexesSorted = false;
 
     if(currentLazyLoadKey > '') {
       outputBlockIndexes = getLazyLoadedBlockIndexes({editorState: props.editorState, blocks: blocksAsArray, initialBlockKey: currentLazyLoadKey})
       setOutputBlockIndexes(outputBlockIndexes);
 
+      // The first value is always loaded and index equals to 0 -> every value after should be only 1 more than the previous
+      // MAX_SLICE_TO_CHECK -> Any number over 3 should be okay, since we need to account only for 0 index, and selection.start and selection.end, and the rest won't be "sorted" unless we are at the top of the page
+      const MAX_SLICE_TO_CHECK = 6;
+      areIndexesSorted = outputBlockIndexes.slice(0, MAX_SLICE_TO_CHECK).every((val, i, arr) => !i || (arr[i - 1] === arr[i] - 1));
+
+      console.log('[f] [scroll] %c USE LAYOUT EFFECT - CALC INDEXES - AFTER', 'color: #888854', {areIndexesSorted})
 
       // // TODO: try and leave first and last block in the array
       // // TODO: earlier lazy loading
       // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
-      // TODO: for scroll to ref - add an initial lazy block key as prop 
+      // // TODO: for scroll to ref - add an initial lazy block key as prop 
 
-      // TODO: for hidden clauses - skip display:none blocks
-      // TODO: try "display: none" instead of removing blocks from container
+      // // TODO: fix infinite scrolling (happens only if the observed element is a list element)
+      // TODO: fix issue when deleting a block that is currentLazyLoadKey? test
+      // TODO: for hidden clauses - refactor clauses
+      // TODO: improve performance on backspace (see why it happens and do not recalulate the indexes unless blockMap changes)
     } else if (currentLazyLoadKey === null) {
-      let lazyLoadBlocks = blocksAsArray.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_OFFSET * 2));
+      let lazyLoadBlocks = blocksAsArray.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_BLOCK_OFFSET * 2));
       outputBlockIndexes = Array.from({length: lazyLoadBlocks.length}, (v, k) => k);
       setOutputBlockIndexes(outputBlockIndexes);
-    } 
+      areIndexesSorted = true;
+    }
 
-    console.log('[f] LAYOUT FINISHED ', {outputBlockIndexes})
+    setTopOfPage(areIndexesSorted);
+
+    console.log('[f] [scroll] LAYOUT FINISHED ', {outputBlockIndexes, areIndexesSorted})
   }, [currentLazyLoadKey, props.editorState])
 
   /*
@@ -575,7 +634,7 @@ const DraftEditorContents = React.memo((props) => {
    * Render
    */ 
 
-  console.log('[f] %c render - props', 'color: #777', {currentLazyLoadKey, props, outputBlockIndexes})
+  console.log('[f] [scroll] %c render - props', 'color: #777', {currentLazyLoadKey, props, outputBlockIndexes})
     
   const {
     blockRenderMap,

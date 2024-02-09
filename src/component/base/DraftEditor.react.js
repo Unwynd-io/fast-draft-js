@@ -364,6 +364,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
     const ariaExpanded =
       ariaRole === 'combobox' ? !!this.props.ariaExpanded : null;
 
+    // TODO: see if something can be done about resetting the blockToScrollTo state after focusing on the block
     const editorContentsProps = {
       blockRenderMap,
       blockRendererFn,
