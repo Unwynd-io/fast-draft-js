@@ -463,7 +463,7 @@ const DraftEditorContents = React.memo((props) => {
 
   /*
    * Refresh the observers on scroll
-  */
+   */
 
   React.useEffect(() => {
     const currentBlockMap = props?.editorState?.getCurrentContent()?.getBlockMap();
@@ -500,6 +500,13 @@ const DraftEditorContents = React.memo((props) => {
       handleCreateObservers();
     }
 
+  }, [outputBlockIndexes]);
+
+  /*
+   * Focus on the block after loading the DOM
+   */
+
+  React.useEffect(() => {
     if (currentFocusBlockKey > '' && !!getBlockByKey(currentFocusBlockKey)) {
       handleFocusBlock(currentFocusBlockKey);
       setCanObserve(true);
@@ -507,8 +514,7 @@ const DraftEditorContents = React.memo((props) => {
       setCurrentFocusBlockKey(null);
     }
 
-
-  }, [outputBlockIndexes, currentFocusBlockKey]);
+  }, [outputBlockIndexes, currentFocusBlockKey])
 
 
   /*
@@ -543,28 +549,27 @@ const DraftEditorContents = React.memo((props) => {
     console.log('[f] LAYOUT FINISHED ', {outputBlockIndexes})
   }, [currentLazyLoadKey, props.editorState])
 
+  /*
+   * Focus on the block
+   */
+
+  // TODO: try to tweak so that there is no need to reset blockKeyToScrollTo from the parent component manually
   React.useEffect(() => {
     if (blockKeyToScrollTo > '') {
       if (blockKeyToScrollTo !== currentLazyLoadKey) {
-        // not observe
         handleUnobserve(observerLazyTop.current, observedElmTop.current);
         handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
         setCanObserve(false);
         setCurrentFocusBlockKey(blockKeyToScrollTo);
         setCurrentLazyLoadKey(blockKeyToScrollTo);
-        // focus in the view - scroll to it
-        // observe again
-
-        // setOutputBlockIndexes([]);
         console.log('[f] SETTING THE KEY AND FOCUSING ON BLOCK', {currentLazyLoadKey, props})
-        // TODO: focus after the blocks are rendered
       } else {
         console.log('[f] SHOULD FOCUS ON BLOCK', {currentLazyLoadKey, props})
         handleFocusBlock(blockKeyToScrollTo);
         // TODO: check collapsed clauses
       }
     }
-  }, [blockKeyToScrollTo]) // props.blockKeyToScrollTo
+  }, [blockKeyToScrollTo])
 
   /*
    * Render
