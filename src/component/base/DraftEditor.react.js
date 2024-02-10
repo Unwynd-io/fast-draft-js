@@ -143,6 +143,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
     blockStyleFn() {
       return '';
     },
+    handleEditorStateChange: (newState: EditorState) => {},
     keyBindingFn: getDefaultKeyBinding,
     readOnly: false,
     spellCheck: false,
@@ -201,6 +202,8 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
     this._placeholderAccessibilityID = 'placeholder-' + this._editorKey;
     this._latestEditorState = props.editorState;
     this._latestCommittedEditorState = props.editorState;
+    this._handleEditorStateChange = props.handleEditorStateChange;
+
 
     this._onBeforeInput = this._buildHandler('onBeforeInput');
     this._onBlur = this._buildHandler('onBlur');
@@ -336,6 +339,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       preventScroll,
       readOnly,
       textAlignment,
+      handleEditorStateChange,
       textDirectionality,
     } = this.props;
 
@@ -375,6 +379,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       },
       customStyleFn,
       editorKey: this._editorKey,
+      handleEditorStateChange,
       editorState,
       preventScroll,
       textDirectionality,

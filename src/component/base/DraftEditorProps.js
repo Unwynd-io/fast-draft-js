@@ -198,6 +198,9 @@ export type DraftEditorDefaultProps = {
   blockRendererFn: (block: BlockNodeRecord) => ?Object,
   blockStyleFn: (block: BlockNodeRecord) => string,
   keyBindingFn: (e: SyntheticKeyboardEvent<>) => ?string,
+  // Custom
+  handleEditorStateChange?: (newState: EditorState) => void,
+  // Custom
   readOnly: boolean,
   spellCheck: boolean,
   stripPastedStyles: boolean,

@@ -17,6 +17,7 @@ import type {DraftInlineStyle} from 'DraftInlineStyle';
 import type EditorState from 'EditorState';
 import type {BidiDirection} from 'UnicodeBidiDirection';
 
+const EditorStateModule = require('EditorState');
 const DraftEditorBlock = require('DraftEditorBlock.react');
 const DraftOffsetKey = require('DraftOffsetKey');
 
@@ -348,7 +349,7 @@ const getShouldComponentUpdate = (prevProps, nextProps) => {
 }
 
 const DraftEditorContents = React.memo((props) => {
-
+  console.log('DraftEditorContents', {...props})
   const contentsRef = React.useRef(null);
   const observerLazyTop = React.useRef(null);
   const observerLazyBottom = React.useRef(null);
@@ -622,9 +623,14 @@ const DraftEditorContents = React.memo((props) => {
         setCurrentFocusBlockKey(blockKeyToScrollTo);
         setCurrentLazyLoadKey(blockKeyToScrollTo);
         console.log('[f] SETTING THE KEY AND FOCUSING ON BLOCK', {currentLazyLoadKey, props})
+
+        const resetState = EditorStateModule.set(props.editorState, {blockKeyToScrollTo: ''});
+        props?.handleEditorStateChange(resetState)
       } else {
         console.log('[f] SHOULD FOCUS ON BLOCK', {currentLazyLoadKey, props})
         handleFocusBlock(blockKeyToScrollTo);
+        const resetState = EditorStateModule.set(props.editorState, {blockKeyToScrollTo: ''});
+        props?.handleEditorStateChange(resetState)
         // TODO: check collapsed clauses
       }
     }
