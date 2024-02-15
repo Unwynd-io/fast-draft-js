@@ -94,6 +94,18 @@ const getHandleIntersection = (callback) => (entries, observer) => {
   });
 }
 
+// const compareElementPosition = (elm1, elm2) => {
+//   const rootElm = elm1.getBoundingClientRect();
+//   const targetElm = elm2.getBoundingClientRect();
+
+//   const topDiff = rootElm.top - targetElm.top;
+//   const bottomDiff = rootElm.bottom - targetElm.bottom;
+
+//   console.log('[f] [scroll] %c compareElementPosition', 'color: #123153', {rootElm, targetElm, topDiff, bottomDiff});
+// }
+
+// window.__compareElementPosition = compareElementPosition;
+
 const isElementList = (element) => {
   return ['OL', 'UL'].includes(element.tagName);
 }
@@ -111,6 +123,11 @@ const getPreviousSibling = (element, count, callback) => {
   // console.log('[getPreviousSibling]', {element, elPreviousSibling: element.previousSibling, count})
 
   const newElement = callback ? callback(element) : element;
+
+
+  if (!newElement) {
+    return null;
+  }
 
   if (count === 0) {
     return newElement;
@@ -142,6 +159,10 @@ const getNextSibling = (element, count, callback) => {
 
   const newElement = callback ? callback(element) : element;
   // console.log('[f] getnextSibling after callback', {newElement, elNextSibling: element.nextSibling, count})
+
+  if (!newElement) {
+    return null;
+  }
 
   if (count === 0) {
     return newElement;
@@ -456,6 +477,9 @@ const getShouldComponentUpdate = (prevProps, nextProps) => {
   );
 }
 
+const getTopObservableBlock = (firstChild) => getNextSibling(firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+const getBottomObservableBlock = (lastChild) => getPreviousSibling(lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+
 const DraftEditorContents = React.memo((props) => {
 
   const contentsRef = React.useRef(null);
@@ -466,10 +490,12 @@ const DraftEditorContents = React.memo((props) => {
   const observerLazyBottom = React.useRef(null);
   const observedElmTop = React.useRef(null);
   const observedElmBottom = React.useRef(null);
+  const observedElmTopParams = React.useRef(null);
+  const observedElmBottomParams = React.useRef(null);
 
   // const [outputBlocks, setOutputBlocks] = React.useState([]);
   const [outputBlockIndexes, setOutputBlockIndexes] = React.useState([]);
-  const [currentLazyLoadKey, setCurrentLazyLoadKey] = React.useState(null);
+  const [currentLazyLoad, setCurrentLazyLoad] = React.useState({});
   const [currentFocusBlockKey, setCurrentFocusBlockKey] = React.useState(null);
 
   // Only first "batch" is loaded
@@ -518,17 +544,23 @@ const DraftEditorContents = React.memo((props) => {
   // dtk6k - on the 3rd up, or quickly scroll up
   // ?1rl32
 
+  const handleUpdateScrollPosition = (scrollTop, scrollLeft) => {
+    console.log('[f] [scroll] %c handleUpdateScrollPosition', 'color: #772237', {scrollTop, scrollLeft})
+    const scrollElm = contentsRef.current.parentElement;
+    scrollElm.scrollTop = scrollTop;
+    scrollElm.scrollLeft = scrollLeft;
+  }
 
   const handleCreateObservers = () => {
     console.log('[f] [draft] handleCreateObservers')
-    let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
-    let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+    let firstChild = getTopObservableBlock(contentsRef?.current?.firstChild); // getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+    let lastChild = getBottomObservableBlock(contentsRef?.current?.lastChild); // getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
 
     window.__devTopElement = firstChild;
     window.__devBottomElement = lastChild;
 
     console.log('[f] [draft] %c OBSERVING NEW', 'color: #532523', {
-      nowKey: currentLazyLoadKey,
+      nowKey: currentLazyLoad.key,
       observerTop: observerLazyTop.current,
       observerBottom: observerLazyBottom.current,
       firstChild,
@@ -540,11 +572,38 @@ const DraftEditorContents = React.memo((props) => {
       return;
     }
 
+    
+    console.log('[f] [scroll] %c UPDATING SCORLL POSTION, ', 'color: #161', {currentLazyLoad, outputBlockIndexes, blockKeyToScrollTo, currentFocusBlockKey, props})
+    
+    let newScrollPosition = null;
+
+    if (currentLazyLoad.direction === 'TOP') {
+      const oldElmRects = observedElmTopParams.current.rects;
+      const newElmRects = observedElmTop.current.getBoundingClientRect();
+
+      const currentScroll = contentsRef.current.parentElement.scrollTop;
+      newScrollPosition = currentScroll + (newElmRects.top - oldElmRects.top);
+      console.log('[f] [scroll] %c scrolling from top', 'color: #566211', {newScrollPosition, oldElmRects, newElmRects})
+    }
+
+    if (currentLazyLoad.direction === 'BOTTOM') {
+      const oldElmRects = observedElmBottomParams.current.rects;
+      const newElmRects = observedElmBottom.current.getBoundingClientRect();
+      
+      const currentScroll = contentsRef.current.parentElement.scrollTop;
+      newScrollPosition = currentScroll + (newElmRects.top - oldElmRects.top);
+      console.log('[f] [scroll] %c scrolling from bottom', 'color: #566211', {newScrollPosition, oldElmRects, newElmRects})
+    }
+
+    if (newScrollPosition) {
+      handleUpdateScrollPosition(newScrollPosition, 0);
+    }
+
     handleUnobserve(observerLazyTop.current, observedElmTop.current);
     handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
 
-    const observerCallback = (name) => getHandleIntersection((entry, observer) => {
-      console.log(`[f] [draft] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+    const observerCallback = (direction) => getHandleIntersection((entry, observer) => {
+      console.log(`[f] [draft] %c OBSERVER ${direction} INTERSECTED CALLBACK`, 'color: #772323', {
         entry, 
         observer,
         lastChild,
@@ -555,9 +614,9 @@ const DraftEditorContents = React.memo((props) => {
       if (entry.isIntersecting) {
         observer.disconnect();
         const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-        console.log(`[f] [draft] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+        console.log(`[f] [draft] %c SETTING NEW BLOCK ${direction} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
 
-        // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
+        // TODO: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
         /* ^ not sure if this code is the right idea for above.
           const indexOfLazyBlock = lazyLoadBlocks.findIndex(block => block.key === blockKey);
           if(indexOfLazyBlock == -1 || indexOfLazyBlock === 1 || indexOfLazyBlock === lazyLoadBlocks.length - 1) {
@@ -570,7 +629,26 @@ const DraftEditorContents = React.memo((props) => {
           }
         */
         
-        setCurrentLazyLoadKey(blockKey);
+        if (direction === 'TOP') {
+          const elmTopParams = {
+            rects: firstChild.getBoundingClientRect(),
+          }
+          observedElmTopParams.current = elmTopParams;
+          console.log('[f] [scroll] STORING OLD VALUES: ', {elmTopParams})
+        }
+
+        if (direction === 'BOTTOM') {
+          const elmBottomParams = {
+            rects: lastChild.getBoundingClientRect(),
+          }
+          observedElmBottomParams.current = elmBottomParams;
+          console.log('[f] [scroll] STORING OLD VALUES: ', {elmBottomParams})
+        }
+
+        setCurrentLazyLoad({
+          key: blockKey,
+          direction,
+        });
       }
     })
 
@@ -599,13 +677,16 @@ const DraftEditorContents = React.memo((props) => {
 
   React.useEffect(() => {
     const currentBlockMap = props?.editorState?.getCurrentContent()?.getBlockMap();
+    let firstChild = getTopObservableBlock(contentsRef?.current?.firstChild);
+    let lastChild = getBottomObservableBlock(contentsRef?.current?.lastChild);
+    const areObservedElementsNew = observedElmTop.current !== firstChild || observedElmBottom.current !== lastChild;
     const shouldLazyLoad = outputBlockIndexes.length > MAX_BLOCKS_TO_DISPLAY && currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
 
-    console.log('[f] [scroll] %c useEffect RECREATE OBSERVERS ON SCROLL, ', 'color: #123153', { outputBlockIndexes, blockMapSize: currentBlockMap.size, shouldLazyLoad});
+    console.log('[f] [scroll] %c useEffect RECREATE OBSERVERS ON SCROLL, ', 'color: #123153', { areObservedElementsNew, firstChild, lastChild, OBSTOP: observedElmTop.current, OBSBOTTOM: observedElmBottom.current, outputBlockIndexes, blockMapSize: currentBlockMap.size, shouldLazyLoad});
 
     // console.log('[f] [scroll] %c useEffect, ', 'color: #123153', {
     //   shouldLazyLoad,
-    //   currentLazyLoadKey,
+    //   currentLazyLoad,
     //   currentBlockMapArr: currentBlockMap.toArray(),
     //   currentProps: props,
     //   blockKeyToScrollTo,
@@ -630,11 +711,11 @@ const DraftEditorContents = React.memo((props) => {
      * Setting the observers
     */
     
-    if (canObserve.current && shouldLazyLoad && !!contentsRef?.current?.lastChild ) {
+    if (canObserve.current && shouldLazyLoad && !!contentsRef?.current?.lastChild && areObservedElementsNew) {
       handleCreateObservers();
     }
 
-  }, [outputBlockIndexes, props?.editorState?.getCurrentContent()?.getBlockMap()]);
+  }, [outputBlockIndexes, currentLazyLoad, props?.editorState?.getCurrentContent()?.getBlockMap()]);
 
   /*
    * Focus on the block after loading the DOM
@@ -650,6 +731,39 @@ const DraftEditorContents = React.memo((props) => {
 
   }, [outputBlockIndexes, currentFocusBlockKey])
 
+  /*
+   * Updating scroll position - does not work in separate useEffect currently
+   */
+
+  // React.useEffect(() => {
+
+  //   console.log('[f] [scroll] %c UPDATING SCORLL POSTION, ', 'color: #161', {currentLazyLoad, outputBlockIndexes, blockKeyToScrollTo, currentFocusBlockKey, props})
+    
+  //   let newScrollPosition = null;
+
+  //   if (currentLazyLoad.direction === 'TOP') {
+  //     const oldElmRects = observedElmTopParams.current.rects;
+  //     const newElmRects = observedElmTop.current.getBoundingClientRect();
+
+  //     const currentScroll = contentsRef.current.parentElement.scrollTop;
+  //     newScrollPosition = currentScroll + (newElmRects.top - oldElmRects.top);
+  //     console.log('[f] [scroll] %c scrolling from top', 'color: #566211', {newScrollPosition, oldElmRects, newElmRects})
+  //   }
+
+  //   if (currentLazyLoad.direction === 'BOTTOM') {
+  //     const oldElmRects = observedElmBottomParams.current.rects;
+  //     const newElmRects = observedElmBottom.current.getBoundingClientRect();
+      
+  //     const currentScroll = contentsRef.current.parentElement.scrollTop;
+  //     newScrollPosition = currentScroll + (newElmRects.top - oldElmRects.top);
+  //     console.log('[f] [scroll] %c scrolling from bottom', 'color: #566211', {newScrollPosition, oldElmRects, newElmRects})
+  //   }
+
+  //   if (newScrollPosition) {
+  //     handleUpdateScrollPosition(newScrollPosition, 0);
+  //   }
+
+  // }, [outputBlockIndexes, currentLazyLoad])
 
   /*
    * Calculate indexes to render
@@ -658,13 +772,13 @@ const DraftEditorContents = React.memo((props) => {
   React.useEffect(() => {
     const blocksAsArray = props.editorState.getCurrentContent().getBlocksAsArray();
 
-    console.log('[f] [draft] [scroll] %c USE EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blockKeyToScrollTo, blocksAsArray, props})
+    console.log('[f] [draft] [scroll] %c USE EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoad, blockKeyToScrollTo, blocksAsArray, props})
 
     let outputBlockIndexes = [];
     let areIndexesSorted = false;
 
-    if(currentLazyLoadKey > '') {
-      outputBlockIndexes = getLazyLoadedBlockIndexes({editorState: props.editorState, blocks: blocksAsArray, initialBlockKey: currentLazyLoadKey})
+    if(currentLazyLoad.key > '') {
+      outputBlockIndexes = getLazyLoadedBlockIndexes({editorState: props.editorState, blocks: blocksAsArray, initialBlockKey: currentLazyLoad.key})
       setOutputBlockIndexes(outputBlockIndexes);
 
       // The first value is always loaded and index equals to 0 -> every value after should be only 1 more than the previous
@@ -680,10 +794,10 @@ const DraftEditorContents = React.memo((props) => {
       // // TODO: for scroll to ref - add an initial lazy block key as prop 
 
       // // TODO: fix infinite scrolling (happens only if the observed element is a list element)
-      // TODO: fix issue when deleting a block that is currentLazyLoadKey? test
+      // TODO: fix issue when deleting a block that is currentLazyLoad? test
       // TODO: for hidden clauses - refactor clauses
       // TODO: improve performance on backspace (see why it happens and do not recalulate the indexes unless blockMap changes)
-    } else if (currentLazyLoadKey === null) {
+    } else if (!currentLazyLoad.key) {
       let lazyLoadBlocks = blocksAsArray.slice(0, MAX_BLOCKS_TO_DISPLAY + (LAZY_LOAD_BLOCK_OFFSET * 2));
       outputBlockIndexes = Array.from({length: lazyLoadBlocks.length}, (v, k) => k);
       setOutputBlockIndexes(outputBlockIndexes);
@@ -693,7 +807,7 @@ const DraftEditorContents = React.memo((props) => {
     setTopOfPage(areIndexesSorted);
 
     console.log('[f] [draft] [scroll] LAYOUT FINISHED ', {outputBlockIndexes, areIndexesSorted})
-  }, [currentLazyLoadKey, props.editorState])
+  }, [currentLazyLoad, props.editorState])
 
   /*
    * Focus on the block
@@ -701,17 +815,17 @@ const DraftEditorContents = React.memo((props) => {
 
   // TODO: try to tweak so that there is no need to reset blockKeyToScrollTo from the parent component manually
   React.useEffect(() => {
-    console.log('[f] [draft] %c USE EFFECT - FOCUS ON BLOCK', 'color: #643171', {currentLazyLoadKey, blockKeyToScrollTo})
+    console.log('[f] [draft] %c USE EFFECT - FOCUS ON BLOCK', 'color: #643171', {currentLazyLoad, blockKeyToScrollTo})
     if (blockKeyToScrollTo > '') {
-      if (blockKeyToScrollTo !== currentLazyLoadKey) {
+      if (blockKeyToScrollTo !== currentLazyLoad.key) {
         handleUnobserve(observerLazyTop.current, observedElmTop.current);
         handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
         setCanObserve(false);
         setCurrentFocusBlockKey(blockKeyToScrollTo);
-        setCurrentLazyLoadKey(blockKeyToScrollTo);
-        // console.log('[f] SETTING THE KEY AND FOCUSING ON BLOCK', {currentLazyLoadKey, props})
+        setCurrentLazyLoad({key: blockKeyToScrollTo, direction: 'FOCUS'});
+        // console.log('[f] SETTING THE KEY AND FOCUSING ON BLOCK', {currentLazyLoad, props})
       } else {
-        // console.log('[f] SHOULD FOCUS ON BLOCK', {currentLazyLoadKey, props})
+        // console.log('[f] SHOULD FOCUS ON BLOCK', {currentLazyLoad, props})
         handleFocusBlock(blockKeyToScrollTo);
         // TODO: check collapsed clauses
       }
@@ -722,122 +836,123 @@ const DraftEditorContents = React.memo((props) => {
    * Custom scrolling
    */
 
-  const handleEnabelMouseWheel = () => {
-    disableScrollEventsRef.current = false;
-  }
+  // const handleEnabelMouseWheel = () => {
+  //   disableScrollEventsRef.current = false;
+  // }
   
-  const handleScroll = (scrollTop, scrollLeft) => {
-    console.log('[f] [scroll] %c handleScroll', 'color: #363474', {e, currentLazyLoadKey, outputBlockIndexes});
+  // const handleScroll = (scrollTop, scrollLeft) => {
+  //   console.log('[f] [scroll] %c handleScroll', 'color: #363474', { scrollTop, scrollLeft});
 
-    // scrollElement.scrollTop = scrollTop;
-    // scrollElement.scrollLeft = scrollLeft;
+  //   // scrollElement.scrollTop = scrollTop;
+  //   // scrollElement.scrollLeft = scrollLeft;
 
-    disableScrollEventsRef.current = true;
-    requestAnimationFrame(handleEnabelMouseWheel); 
-  }
+  //   disableScrollEventsRef.current = true;
+  //   requestAnimationFrame(handleEnabelMouseWheel); 
+  // }
 
-  const handleMouseWheel = (e) => {
-    // will prevent the creation of scroll event
-    e.preventDefault();
-    // will stop propagation to other wheel event listeners
-    e.stopPropagation();
+  // const handleMouseWheel = (e) => {
+  //   // will prevent the creation of scroll event
+  //   e.preventDefault();
+  //   // will stop propagation to other wheel event listeners
+  //   e.stopPropagation();
 
-    // limit the browser to 1 manual scroll event per frame
-    if (disableScrollEvents) {
-      console.log('[f] [scroll] %c handleMouseWheel PREVENTED', 'color: red',  {e, delta: {
-        x: e.deltaX,
-        y: e.deltaY,
-        mode: e.deltaMode,
-      }, currentLazyLoadKey, outputBlockIndexes});
+  //   // limit the browser to 1 manual scroll event per frame
+  //   if (disableScrollEvents) {
+  //     console.log('[f] [scroll] %c handleMouseWheel PREVENTED', 'color: red',  {e, delta: {
+  //       x: e.deltaX,
+  //       y: e.deltaY,
+  //       mode: e.deltaMode,
+  //     }, currentLazyLoadKey: currentLazyLoad.key, outputBlockIndexes});
 
-      return false;
-    }
-    const scrollElement = contentsRef.current.parentElement;
+  //     return false;
+  //   }
+  //   const scrollElement = contentsRef.current.parentElement;
 
-    let deltaY = e.deltaY
-    let deltaX = e.deltaX
+  //   let deltaY = e.deltaY
+  //   let deltaX = e.deltaX
      
-    // check e.deltaMode, 0 for pixels (default), 1 for lines, 2 for pages
-    const isLinesScroll = e.deltaMode === 1;
-    const isPagesScroll = e.deltaMode === 2;
-     
-     
-    if (isLinesScroll) {
-      deltaY = deltaY * 10;
-      deltaX = deltaX * 10;
-    }
+  //   // check e.deltaMode, 0 for pixels (default), 1 for lines, 2 for pages
+  //   const isLinesScroll = e.deltaMode === 1;
+  //   const isPagesScroll = e.deltaMode === 2;
      
      
-    if (isPagesScroll) {
-      deltaY = deltaY * 25;
-      deltaX = deltaX * 25;
-    }
+  //   if (isLinesScroll) {
+  //     deltaY = deltaY * 10;
+  //     deltaX = deltaX * 10;
+  //   }
+     
+     
+  //   if (isPagesScroll) {
+  //     deltaY = deltaY * 25;
+  //     deltaX = deltaX * 25;
+  //   }
     
 
-    const newScrollTop = scrollElement.scrollTop + deltaY;
-    const newScrollLeft = scrollElement.scrollLeft + deltaX;
+  //   const newScrollTop = scrollElement.scrollTop + deltaY;
+  //   const newScrollLeft = scrollElement.scrollLeft + deltaX;
 
-    console.log('[f] [scroll] %c handleMouseWheel', 'color: #532611', {deltaY: e.deltaY, newY: newScrollTop, mode: e.deltaMode, currentLazyLoadKey, outputBlockIndexes, e});
+  //   console.log('[f] [scroll] %c handleMouseWheel', 'color: #532611', {deltaY: e.deltaY, newY: newScrollTop, mode: e.deltaMode, currentLazyLoad, outputBlockIndexes, e});
 
-    scrollElement.scroll(newScrollLeft, newScrollTop);
+  //   scrollElement.scroll(newScrollLeft, newScrollTop);
     
-    // get scrollTop and scrollLeft values from the element
-    // values can't be lower than 0
-    const scrollTop = scrollElement.scrollTop;
-    const scrollLeft = scrollElement.scrollLeft;
+  //   // get scrollTop and scrollLeft values from the element
+  //   // values can't be lower than 0
+  //   const scrollTop = scrollElement.scrollTop;
+  //   const scrollLeft = scrollElement.scrollLeft;
 
-    handleScroll(scrollTop, scrollLeft);
-  }
+  //   handleScroll(scrollTop, scrollLeft);
+  // }
 
 
-  React.useEffect(() => {
-    const scrollElement = contentsRef.current.parentElement;
+  // React.useEffect(() => {
+  //   const scrollElement = contentsRef.current.parentElement;
 
-    console.log('[f] [scroll] INIT SCROLL EVENT LISTENER', {scrollElement});
+  //   console.log('[f] [scroll] INIT SCROLL EVENT LISTENER', {scrollElement});
 
-    if (scrollElement) {
+  //   if (scrollElement) {
 
-      scrollElement.addEventListener('wheel', handleMouseWheel, {passive: false});
+  //     scrollElement.addEventListener('wheel', handleMouseWheel, {passive: false});
 
-      return () => {
-        scrollElement.removeEventListener('wheel', handleMouseWheel);
-      }
-    }
-  }, [outputBlockIndexes])
+  //     return () => {
+  //       scrollElement.removeEventListener('wheel', handleMouseWheel);
+  //     }
+  //   }
+  // }, [outputBlockIndexes])
 
   /*
    * Workaround for the scrollTop === 0 position, we should not allow the user to be at the top unless we are at the top of the page 
    */
 
-  // React.useEffect(() => {
+  // TODO: test if needed with custom scroll adjust
+  React.useEffect(() => {
 
-  //   const scrollElm = contentsRef.current.parentElement;
+    const scrollElm = contentsRef.current.parentElement;
 
-  //   const handleScroll = (e) => {
-  //     // console.log('[f] [scroll] %c SCROLL EVENT', 'color: #849', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+    const handleScroll = (e) => {
+      // console.log('[f] [scroll] %c SCROLL EVENT', 'color: #849', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
 
-  //     const currentScroll = scrollElm.scrollTop;
+      const currentScroll = scrollElm.scrollTop;
 
-  //     if (!isTopOfPage) {
-  //       if (currentScroll < MAX_SCROLL_OFFSET) {
-  //         // console.log(`[f] [scroll] %c RESETTING SCROLL TO ${MAX_SCROLL_OFFSET}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
-  //         scrollElm.scrollTop = MAX_SCROLL_OFFSET;
-  //       }
-  //     }
-  //   }
+      if (!isTopOfPage) {
+        if (currentScroll < MAX_SCROLL_OFFSET) {
+          // console.log(`[f] [scroll] %c RESETTING SCROLL TO ${MAX_SCROLL_OFFSET}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+          scrollElm.scrollTop = MAX_SCROLL_OFFSET;
+        }
+      }
+    }
 
-  //   scrollElm.addEventListener('scroll', handleScroll);
+    scrollElm.addEventListener('scroll', handleScroll);
 
-  //   return () => {
-  //     scrollElm.removeEventListener('scroll', handleScroll);
-  //   }
-  // }, [isTopOfPage])
+    return () => {
+      scrollElm.removeEventListener('scroll', handleScroll);
+    }
+  }, [isTopOfPage])
 
   /*
    * Render
    */ 
 
-  // console.log('[f] [scroll] %c render - props', 'color: #777', {currentLazyLoadKey, props, outputBlockIndexes})
+  // console.log('[f] [scroll] %c render - props', 'color: #777', {currentLazyLoad, props, outputBlockIndexes})
     
   const {
     blockRenderMap,
@@ -978,8 +1093,8 @@ const DraftEditorContents = React.memo((props) => {
   }
 
   // console.log('[f] render after processing:', {
-  //   currentLazyLoadKey, 
-  //   contextText: content.getBlockForKey(currentLazyLoadKey)?.text, 
+  //   currentLazyLoad, 
+  //   contextText: content.getBlockForKey(currentLazyLoad)?.text, 
   //   processedBlocks, 
   //   outputBlockIndexes,
   //   lazyLoadBlocks, blocksAsArray 

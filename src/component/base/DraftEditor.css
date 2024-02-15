@@ -16,6 +16,8 @@
 .public/DraftEditor/content {
   height: inherit;
   text-align: initial;
+  /* TODO: add as class when we add lazyLoading parameter to DraftEditor component */
+  overflow-anchor: none;
 }
 
 .public/DraftEditor/content[contenteditable='true'] {
