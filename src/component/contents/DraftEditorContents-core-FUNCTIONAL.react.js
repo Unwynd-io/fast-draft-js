@@ -98,6 +98,15 @@ const isElementList = (element) => {
   return ['OL', 'UL'].includes(element.tagName);
 }
 
+const getElementWrapper = (element) => {
+  return element.parentElement.parentElement;
+}
+
+const isElementWrapped = (element) => {
+  const wrapper = getElementWrapper(element);
+  return wrapper.getAttribute('number-list-element') === 'true' || wrapper.getAttribute('ordered-list-element') === 'true';
+}
+
 const getPreviousSibling = (element, count, callback) => {
   // console.log('[getPreviousSibling]', {element, elPreviousSibling: element.previousSibling, count})
 
@@ -109,15 +118,17 @@ const getPreviousSibling = (element, count, callback) => {
 
   if (!newElement.previousSibling) {
 
-    const wrapperElement = newElement.parentElement.parentElement;
+    const wrapperElement = getElementWrapper(newElement);
 
     // Case for the list elements
-    if (wrapperElement.getAttribute('number-list-element') === 'true' && wrapperElement.previousSibling) {
-      // console.log('[f] getting previous of wrapper element', {wrapperElement, wrapperPrev: wrapperElement.previousSibling, count})
-      return getPreviousSibling(wrapperElement.previousSibling, count - 1, callback);
-    } else if (isElementList(wrapperElement.parentElement) && wrapperElement.parentElement.previousSibling) {
-      // console.log('[f] getting previous of wrapper element parent', {wrapperElementParent: wrapperElement.parentElement, wrapperPrev: wrapperElement.parentElement.previousSibling, count})
-      return getPreviousSibling(wrapperElement.parentElement.previousSibling, count - 1, callback);
+    if (isElementWrapped(newElement)) {
+      if (wrapperElement.previousSibling) {
+        // console.log('[f] getting previous of wrapper element', {wrapperElement, wrapperPrev: wrapperElement.previousSibling, count})
+        return getPreviousSibling(wrapperElement.previousSibling, count - 1, callback);
+      } else if (isElementList(wrapperElement.parentElement) && wrapperElement.parentElement.previousSibling) {
+        // console.log('[f] getting previous of wrapper element parent', {wrapperElementParent: wrapperElement.parentElement, wrapperPrev: wrapperElement.parentElement.previousSibling, count})
+        return getPreviousSibling(wrapperElement.parentElement.previousSibling, count - 1, callback);
+      }
     }
 
     return newElement;
@@ -138,10 +149,10 @@ const getNextSibling = (element, count, callback) => {
   
   if (!newElement.nextSibling) {
     
-    const wrapperElement = newElement.parentElement.parentElement;
+    const wrapperElement = getElementWrapper(newElement);
 
     // Case for the list elements
-    if (wrapperElement.getAttribute('number-list-element') === 'true') {
+    if (isElementWrapped(newElement)) {
       if (wrapperElement.nextSibling) {
         // console.log('[f] getting next of wrapper element', {wrapperElement, wrapperNext: wrapperElement.nextSibling, count})
         return getNextSibling(wrapperElement.nextSibling, count - 1, callback);
@@ -168,63 +179,123 @@ const getFirstDraftBlock = (element, isFirst = true) => {
   
   if (childrenCount > 0) {
     const elementToGet = isFirst ? 0 : childrenCount - 1;
-    return getFirstDraftBlock(element?.children?.[elementToGet]);
+    return getFirstDraftBlock(element?.children?.[elementToGet], isFirst);
   }
 
   return null;
 }
 
 
-const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKey}) => {
-  console.log('[f] [lazy] CALL getLazyLoadedBlocks - props', {editorState, blocks: _blocks, initialBlockKey});
+const mapFilteredBlock = (block, {index, isSection, hidden}) => {
+  block.originalIndex = index;
+  block.isSection = isSection;
+  block.hidden = typeof hidden === 'boolean' ? hidden : false;
+  return block;
+}
+
+const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKey}): number[] => {
+  console.log('[f] [draft] CALL getLazyLoadedBlocks - props', {editorState, blocks: _blocks, initialBlockKey});
 
   /*
    * Remove blocks that are inside hidden sections
    */
 
+
+  // [0 (always), 1, 2, 3, 4, 5, 6, ...n(always)]
+
+  // 0 always
+  // 1 - section hidden
+  // 2 - no render
+  // 3 - no render 
+  // 4 - no render 
+  // 5 - no render 
+  // 6 - no render 
+  // 7 - no render 
+  // 8 - no render 
+  // 9 - no render 
+  // 10 - section open
+  // 11 - render
+  // 12 - render
+  // 13 - render
+  // 14 - render
+  // 15 - render
+  // 16 last - always
+
+  // output - 0, 1, 10, 11, 12, 13, 14, 15, 16
+
+
+  // TODO: check what happens if last block is in hidden section but on the screen  
+  
   let shouldSkipBlocks = false;
 
-  // [0, 1, 2, 3, 4, 5, 6]
+  let blocks = [];
 
-  let blocks = _blocks; // [];
-
-  // for (let i = 0; i < _blocks.length; i++) {
+  for (let i = 0; i < _blocks.length; i++) {
     
-  //   const block = _blocks[i];
-  //   const blockType = block.getType();
-  //   const blockDepth = block.getDepth();
+    const block = _blocks[i];
+    const blockType = block.getType();
+    const blockDepth = block.getDepth();
 
-  //   console.log('[f] [lazy] checking block: ', {block, blockType, blockDepth, blockData: block.getData().toObject()})
+    // block.originalIndex = i;
+    // block.isSection = blockType === 'ordered-list-item';
 
-  //   if (blockType === 'ordered-list-item' && blockDepth === 0) {
-  //     const isSectionOpen = block.getData().get('isOpen');
-  //     shouldSkipBlocks = !isSectionOpen;
-  //     blocks.push(block);
-  //     continue;
-  //   }
+    block = mapFilteredBlock(block, {index: i, isSection: blockType === 'ordered-list-item'});
 
-  //   if (shouldSkipBlocks) {
-  //     continue;
-  //   }
+    // console.log('[f] [draft] checking block: ', {block, blockType, blockDepth, blockData: block.getData().toObject()})
 
-  //   blocks.push(block);
-  // }
+    if (blockType === 'ordered-list-item' && blockDepth === 0) {
+      const isSectionOpen = block.getData().get('isOpen');
+      shouldSkipBlocks = !isSectionOpen;
+      blocks.push(block);
+      continue;
+    }
 
-  console.log('[f] [lazy] filtere blocks: ', {blocks});
+    if (shouldSkipBlocks) {
+      continue;
+    }
 
+    blocks.push(block);
+  }
+
+
+  const lastOriginalBlock = _blocks[_blocks.length - 1];
+  const lastFilteredBlock = blocks[blocks.length - 1];
+
+  if (lastOriginalBlock.getKey() !== lastFilteredBlock.getKey()) {
+    console.log('[f] [draft] last block is not the same', {lastOriginalBlock, lastFilteredBlock})
+    const blockType = lastOriginalBlock.getType();
+    const block = mapFilteredBlock(lastOriginalBlock, {index: _blocks.length - 1, isSection: blockType === 'ordered-list-item', hidden: true});
+    blocks.push(block)
+  }
+
+
+  console.log('[f] [draft] filtere blocks: ', {blocks});
   
   let lazyLoadBlockIndexes = [];
 
   const editorSelection = editorState.getSelection();
-  const startOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getStartKey());
-  const endOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getEndKey());
-  const startSelectionExists = startOffsetBlockIndex !== -1;
-  const endSelectionExists = endOffsetBlockIndex !== -1;
+  const _startOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getStartKey()); // Indexes of blocks in filtered array
+  const _endOffsetBlockIndex = blocks.findIndex(block => block.key === editorSelection.getEndKey()); // Indexes of blocks in filtered array
+  const startSelectionExists = _startOffsetBlockIndex !== -1;
+  const endSelectionExists = _endOffsetBlockIndex !== -1;
+
+  let startOffsetBlockIndex = 0; // Actual indexes of blocks in blockMap
+  let endOffsetBlockIndex = 0; // Actual indexes of blocks in blockMap
+
+  if (startSelectionExists) {
+    startOffsetBlockIndex = blocks[_startOffsetBlockIndex].originalIndex;
+  }
+
+  if (endSelectionExists) {
+    startOffsetBlockIndex = blocks[_endOffsetBlockIndex].originalIndex;
+  }
 
   const lazyLoadBlockIndex = blocks.findIndex(block => block.key === initialBlockKey);
 
-  console.log('[f] getLazyLoadedBlocks - props', {
+  console.log('[f] [draft] getLazyLoadedBlocks - props', {
     lazyLoadBlockIndex,
+    _startOffsetBlockIndex,
+    _endOffsetBlockIndex,
     startOffsetBlockIndex,
     endOffsetBlockIndex,
     blockOnIndex: blocks[lazyLoadBlockIndex],
@@ -258,7 +329,7 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
     }
   }
 
-  console.log('[f] %c calc lazy load blocks', 'color: #163432', {start, end, difference, startOffsetBlockIndex, endOffsetBlockIndex});
+  console.log('[f] [draft] %c calc lazy load blocks', 'color: #163432', {start, end, difference, _startOffsetBlockIndex, _endOffsetBlockIndex, startOffsetBlockIndex, endOffsetBlockIndex});
 
   /*
    * Map the lazy blocks
@@ -266,57 +337,59 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
 
   const FIRST_BLOCK = 0;
   const LAST_BLOCK = blocks.length - 1;
+  // TODO: check what should be last block
 
   if (start > FIRST_BLOCK) {
-    console.log('[f] start > FIRST_BLOCK, adding first block')
+    console.log('[f] [draft] start > FIRST_BLOCK, adding first block')
     lazyLoadBlockIndexes.push(FIRST_BLOCK);
   }
 
   // Start selection off screen (ABOVE)
-  if (startSelectionExists && (startOffsetBlockIndex < start && startOffsetBlockIndex !== FIRST_BLOCK)) {
-    console.log('[f] loading START selection off screen ABOVE')
+  if (startSelectionExists && (_startOffsetBlockIndex < start && _startOffsetBlockIndex !== FIRST_BLOCK)) {
+    console.log('[f] [draft] loading START selection off screen ABOVE')
     lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (ABOVE)
-  if (endSelectionExists && ((endOffsetBlockIndex < start && endOffsetBlockIndex !== FIRST_BLOCK)
-    && endOffsetBlockIndex !== startOffsetBlockIndex)) {
-    console.log('[f] loading END selection off screen ABOVE')
+  if (endSelectionExists && ((_endOffsetBlockIndex < start && _endOffsetBlockIndex !== FIRST_BLOCK)
+    && _endOffsetBlockIndex !== _startOffsetBlockIndex)) {
+    console.log('[f] [draft] loading END selection off screen ABOVE')
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
   // Loading the slice
   // lazyLoadBlockIndexes = lazyLoadBlockIndexes.concat(lazySlice);
   for (let i = start; i < end; i++) {
-    lazyLoadBlockIndexes.push(i);
+    const block = blocks[i];
+    lazyLoadBlockIndexes.push(block.originalIndex);
   }
 
   // Start selection off screen (BELOW)
-  if (startSelectionExists && (startOffsetBlockIndex > end && startOffsetBlockIndex !== LAST_BLOCK)) {
-    console.log('[f] loading START selection off screen BELOW')
+  if (startSelectionExists && (_startOffsetBlockIndex > end && _startOffsetBlockIndex !== LAST_BLOCK)) {
+    console.log('[f] [draft] loading START selection off screen BELOW')
     lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (BELOW)
-  if (endSelectionExists &&  ((endOffsetBlockIndex > end && endOffsetBlockIndex !== LAST_BLOCK)
-    && endOffsetBlockIndex !== startOffsetBlockIndex)) {
-    console.log('[f] loading END selection off screen BELOW')
+  if (endSelectionExists &&  ((_endOffsetBlockIndex > end && _endOffsetBlockIndex !== LAST_BLOCK)
+    && _endOffsetBlockIndex !== _startOffsetBlockIndex)) {
+    console.log('[f] [draft] loading END selection off screen BELOW')
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
   if (end < LAST_BLOCK + 1) {
-    console.log('[f] end < LAST_BLOCK, loading last block')
+    console.log('[f] [draft] end < LAST_BLOCK, loading last block')
     lazyLoadBlockIndexes.push(LAST_BLOCK);
   }
 
-  console.log('[f] GET INDEXES, CALCULTATED: ', {lazyLoadBlockIndexes})
+  console.log('[f] [draft] GET INDEXES, CALCULTATED: ', {lazyLoadBlockIndexes})
 
   return lazyLoadBlockIndexes;
 }
 
 const getShouldComponentUpdate = (prevProps, nextProps) => {
 
-  // console.log('[f] NEW getShouldComponentUpdate IN DraftEditorContents-core.react.js', {prevBlockMap:  prevProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray(), nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
+  console.log('[f] %c NEW getShouldComponentUpdate IN DraftEditorContents-core.react.js', 'color: #123125', {prevBlockMap:  prevProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray(), nextBlockMapArr: nextProps?.editorState?.getCurrentContent()?.getBlockMap()?.toArray()});
 
   const prevEditorState = prevProps.editorState;
   const nextEditorState = nextProps.editorState;
@@ -386,6 +459,9 @@ const getShouldComponentUpdate = (prevProps, nextProps) => {
 const DraftEditorContents = React.memo((props) => {
 
   const contentsRef = React.useRef(null);
+  const disableScrollEventsRef = React.useRef(false);
+  const disableScrollEvents = disableScrollEventsRef.current;
+
   const observerLazyTop = React.useRef(null);
   const observerLazyBottom = React.useRef(null);
   const observedElmTop = React.useRef(null);
@@ -444,19 +520,20 @@ const DraftEditorContents = React.memo((props) => {
 
 
   const handleCreateObservers = () => {
+    console.log('[f] [draft] handleCreateObservers')
     let firstChild = getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
     let lastChild = getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
 
     window.__devTopElement = firstChild;
     window.__devBottomElement = lastChild;
 
-    // console.log('[f] [scroll] %c OBSERVING NEW', 'color: #532523', {
-    //   nowKey: currentLazyLoadKey,
-    //   observerTop: observerLazyTop.current,
-    //   observerBottom: observerLazyBottom.current,
-    //   firstChild,
-    //   lastChild
-    // })
+    console.log('[f] [draft] %c OBSERVING NEW', 'color: #532523', {
+      nowKey: currentLazyLoadKey,
+      observerTop: observerLazyTop.current,
+      observerBottom: observerLazyBottom.current,
+      firstChild,
+      lastChild
+    })
 
     if(!firstChild || !lastChild) {
       // console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
@@ -467,18 +544,18 @@ const DraftEditorContents = React.memo((props) => {
     handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
 
     const observerCallback = (name) => getHandleIntersection((entry, observer) => {
-      // console.log(`[f] [scroll] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
-      //   entry, 
-      //   observer,
-      //   lastChild,
-      //   entryTarget: entry?.target,
-      //   entryTargetDataset: entry?.target?.dataset,
-      // });
+      console.log(`[f] [draft] %c OBSERVER ${name} INTERSECTED CALLBACK`, 'color: #772323', {
+        entry, 
+        observer,
+        lastChild,
+        entryTarget: entry?.target,
+        entryTargetDataset: entry?.target?.dataset,
+      });
 
       if (entry.isIntersecting) {
         observer.disconnect();
         const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-        // console.log(`[f] [scroll] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
+        console.log(`[f] [draft] %c SETTING NEW BLOCK ${name} Target div is now in the viewport!`, 'color: #565432', {entry, observer, blockKey, firstChild, lastChild});
 
         // TODO: only set the currentLazyLoadKey to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
         /* ^ not sure if this code is the right idea for above.
@@ -499,7 +576,7 @@ const DraftEditorContents = React.memo((props) => {
 
     const observerSettings = {
       root: contentsRef.current.parentElement,
-      rootMargin: "150px 0px 100px 0px",
+      rootMargin: "0px 0px 0px 0px",
     }
 
     // console.log('[f] observerSettings', {observerSettings})
@@ -513,7 +590,7 @@ const DraftEditorContents = React.memo((props) => {
     observerLazyTop.current.observe(observedElmTop.current);
     observerLazyBottom.current.observe(observedElmBottom.current);
 
-    // console.log('[f] [scroll] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
+    console.log('[f] [draft] AFTER OBSERVER INIT', {observerBottom: observerLazyBottom.current, obsererTop: observerLazyTop.current, topElm: observedElmTop.current, bottomElm: observedElmBottom.current})
   }
 
   /*
@@ -522,7 +599,9 @@ const DraftEditorContents = React.memo((props) => {
 
   React.useEffect(() => {
     const currentBlockMap = props?.editorState?.getCurrentContent()?.getBlockMap();
-    const shouldLazyLoad = currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
+    const shouldLazyLoad = outputBlockIndexes.length > MAX_BLOCKS_TO_DISPLAY && currentBlockMap.size > MAX_BLOCKS_TO_DISPLAY;
+
+    console.log('[f] [scroll] %c useEffect RECREATE OBSERVERS ON SCROLL, ', 'color: #123153', { outputBlockIndexes, blockMapSize: currentBlockMap.size, shouldLazyLoad});
 
     // console.log('[f] [scroll] %c useEffect, ', 'color: #123153', {
     //   shouldLazyLoad,
@@ -558,34 +637,6 @@ const DraftEditorContents = React.memo((props) => {
   }, [outputBlockIndexes, props?.editorState?.getCurrentContent()?.getBlockMap()]);
 
   /*
-   * Workaround for the scrollTop === 0 position, we should not allow the user to be at the top unless we are at the top of the page 
-   */
-
-  React.useEffect(() => {
-
-    const scrollElm = contentsRef.current.parentElement;
-
-    const handleScroll = (e) => {
-      // console.log('[f] [scroll] %c SCROLL EVENT', 'color: #849', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
-
-      const currentScroll = scrollElm.scrollTop;
-
-      if (!isTopOfPage) {
-        if (currentScroll < MAX_SCROLL_OFFSET) {
-          // console.log(`[f] [scroll] %c RESETTING SCROLL TO ${MAX_SCROLL_OFFSET}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
-          scrollElm.scrollTop = MAX_SCROLL_OFFSET;
-        }
-      }
-    }
-
-    scrollElm.addEventListener('scroll', handleScroll);
-
-    return () => {
-      scrollElm.removeEventListener('scroll', handleScroll);
-    }
-  }, [isTopOfPage])
-
-  /*
    * Focus on the block after loading the DOM
    */
 
@@ -607,7 +658,7 @@ const DraftEditorContents = React.memo((props) => {
   React.useEffect(() => {
     const blocksAsArray = props.editorState.getCurrentContent().getBlocksAsArray();
 
-    // console.log('[f] [scroll] %c USE LAYOUT EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blockKeyToScrollTo, blocksAsArray, props})
+    console.log('[f] [draft] [scroll] %c USE EFFECT - CALC INDEXES', 'color: #888854', {currentLazyLoadKey, blockKeyToScrollTo, blocksAsArray, props})
 
     let outputBlockIndexes = [];
     let areIndexesSorted = false;
@@ -641,7 +692,7 @@ const DraftEditorContents = React.memo((props) => {
 
     setTopOfPage(areIndexesSorted);
 
-    // console.log('[f] [scroll] LAYOUT FINISHED ', {outputBlockIndexes, areIndexesSorted})
+    console.log('[f] [draft] [scroll] LAYOUT FINISHED ', {outputBlockIndexes, areIndexesSorted})
   }, [currentLazyLoadKey, props.editorState])
 
   /*
@@ -650,6 +701,7 @@ const DraftEditorContents = React.memo((props) => {
 
   // TODO: try to tweak so that there is no need to reset blockKeyToScrollTo from the parent component manually
   React.useEffect(() => {
+    console.log('[f] [draft] %c USE EFFECT - FOCUS ON BLOCK', 'color: #643171', {currentLazyLoadKey, blockKeyToScrollTo})
     if (blockKeyToScrollTo > '') {
       if (blockKeyToScrollTo !== currentLazyLoadKey) {
         handleUnobserve(observerLazyTop.current, observedElmTop.current);
@@ -665,6 +717,121 @@ const DraftEditorContents = React.memo((props) => {
       }
     }
   }, [blockKeyToScrollTo])
+
+  /*
+   * Custom scrolling
+   */
+
+  const handleEnabelMouseWheel = () => {
+    disableScrollEventsRef.current = false;
+  }
+  
+  const handleScroll = (scrollTop, scrollLeft) => {
+    console.log('[f] [scroll] %c handleScroll', 'color: #363474', {e, currentLazyLoadKey, outputBlockIndexes});
+
+    // scrollElement.scrollTop = scrollTop;
+    // scrollElement.scrollLeft = scrollLeft;
+
+    disableScrollEventsRef.current = true;
+    requestAnimationFrame(handleEnabelMouseWheel); 
+  }
+
+  const handleMouseWheel = (e) => {
+    // will prevent the creation of scroll event
+    e.preventDefault();
+    // will stop propagation to other wheel event listeners
+    e.stopPropagation();
+
+    // limit the browser to 1 manual scroll event per frame
+    if (disableScrollEvents) {
+      console.log('[f] [scroll] %c handleMouseWheel PREVENTED', 'color: red',  {e, delta: {
+        x: e.deltaX,
+        y: e.deltaY,
+        mode: e.deltaMode,
+      }, currentLazyLoadKey, outputBlockIndexes});
+
+      return false;
+    }
+    const scrollElement = contentsRef.current.parentElement;
+
+    let deltaY = e.deltaY
+    let deltaX = e.deltaX
+     
+    // check e.deltaMode, 0 for pixels (default), 1 for lines, 2 for pages
+    const isLinesScroll = e.deltaMode === 1;
+    const isPagesScroll = e.deltaMode === 2;
+     
+     
+    if (isLinesScroll) {
+      deltaY = deltaY * 10;
+      deltaX = deltaX * 10;
+    }
+     
+     
+    if (isPagesScroll) {
+      deltaY = deltaY * 25;
+      deltaX = deltaX * 25;
+    }
+    
+
+    const newScrollTop = scrollElement.scrollTop + deltaY;
+    const newScrollLeft = scrollElement.scrollLeft + deltaX;
+
+    console.log('[f] [scroll] %c handleMouseWheel', 'color: #532611', {deltaY: e.deltaY, newY: newScrollTop, mode: e.deltaMode, currentLazyLoadKey, outputBlockIndexes, e});
+
+    scrollElement.scroll(newScrollLeft, newScrollTop);
+    
+    // get scrollTop and scrollLeft values from the element
+    // values can't be lower than 0
+    const scrollTop = scrollElement.scrollTop;
+    const scrollLeft = scrollElement.scrollLeft;
+
+    handleScroll(scrollTop, scrollLeft);
+  }
+
+
+  React.useEffect(() => {
+    const scrollElement = contentsRef.current.parentElement;
+
+    console.log('[f] [scroll] INIT SCROLL EVENT LISTENER', {scrollElement});
+
+    if (scrollElement) {
+
+      scrollElement.addEventListener('wheel', handleMouseWheel, {passive: false});
+
+      return () => {
+        scrollElement.removeEventListener('wheel', handleMouseWheel);
+      }
+    }
+  }, [outputBlockIndexes])
+
+  /*
+   * Workaround for the scrollTop === 0 position, we should not allow the user to be at the top unless we are at the top of the page 
+   */
+
+  // React.useEffect(() => {
+
+  //   const scrollElm = contentsRef.current.parentElement;
+
+  //   const handleScroll = (e) => {
+  //     // console.log('[f] [scroll] %c SCROLL EVENT', 'color: #849', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+
+  //     const currentScroll = scrollElm.scrollTop;
+
+  //     if (!isTopOfPage) {
+  //       if (currentScroll < MAX_SCROLL_OFFSET) {
+  //         // console.log(`[f] [scroll] %c RESETTING SCROLL TO ${MAX_SCROLL_OFFSET}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+  //         scrollElm.scrollTop = MAX_SCROLL_OFFSET;
+  //       }
+  //     }
+  //   }
+
+  //   scrollElm.addEventListener('scroll', handleScroll);
+
+  //   return () => {
+  //     scrollElm.removeEventListener('scroll', handleScroll);
+  //   }
+  // }, [isTopOfPage])
 
   /*
    * Render
@@ -765,6 +932,10 @@ const DraftEditorContents = React.memo((props) => {
         className,
         getListItemClasses(blockType, depth, shouldResetCount, direction),
       );
+    }
+
+    if (block.hidden) {
+      className = joinClasses(className, 'public-DraftEditor-block--hidden');
     }
 
     alreadyEncounteredDepth.add(depth);

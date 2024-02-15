@@ -13,6 +13,10 @@
   white-space: pre-wrap;
 }
 
+.public/DraftEditor/block--hidden {
+  display: none;
+}
+
 /* @noflip */
 .public/DraftStyleDefault/ltr {
   direction: ltr;
