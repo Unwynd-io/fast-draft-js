@@ -483,9 +483,8 @@ const getBottomObservableBlock = (lastChild) => getPreviousSibling(lastChild, LA
 const DraftEditorContents = React.memo((props) => {
 
   const contentsRef = React.useRef(null);
-  const disableScrollEventsRef = React.useRef(false);
-  const disableScrollEvents = disableScrollEventsRef.current;
-
+  // const disableScrollEventsRef = React.useRef(false);
+  // const disableScrollEvents = disableScrollEventsRef.current;
   const observerLazyTop = React.useRef(null);
   const observerLazyBottom = React.useRef(null);
   const observedElmTop = React.useRef(null);
@@ -544,34 +543,7 @@ const DraftEditorContents = React.memo((props) => {
   // dtk6k - on the 3rd up, or quickly scroll up
   // ?1rl32
 
-  const handleUpdateScrollPosition = (scrollTop, scrollLeft) => {
-    console.log('[f] [scroll] %c handleUpdateScrollPosition', 'color: #772237', {scrollTop, scrollLeft})
-    const scrollElm = contentsRef.current.parentElement;
-    scrollElm.scrollTop = scrollTop;
-    scrollElm.scrollLeft = scrollLeft;
-  }
-
-  const handleCreateObservers = () => {
-    console.log('[f] [draft] handleCreateObservers')
-    let firstChild = getTopObservableBlock(contentsRef?.current?.firstChild); // getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
-    let lastChild = getBottomObservableBlock(contentsRef?.current?.lastChild); // getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
-
-    window.__devTopElement = firstChild;
-    window.__devBottomElement = lastChild;
-
-    console.log('[f] [draft] %c OBSERVING NEW', 'color: #532523', {
-      nowKey: currentLazyLoad.key,
-      observerTop: observerLazyTop.current,
-      observerBottom: observerLazyBottom.current,
-      firstChild,
-      lastChild
-    })
-
-    if(!firstChild || !lastChild) {
-      // console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
-      return;
-    }
-
+  const handleUpdateScrollPosition = () => {
     
     console.log('[f] [scroll] %c UPDATING SCORLL POSTION, ', 'color: #161', {currentLazyLoad, outputBlockIndexes, blockKeyToScrollTo, currentFocusBlockKey, props})
     
@@ -596,8 +568,34 @@ const DraftEditorContents = React.memo((props) => {
     }
 
     if (newScrollPosition) {
-      handleUpdateScrollPosition(newScrollPosition, 0);
+      console.log('[f] [scroll] %c handleUpdateScrollPosition', 'color: #772237', {newScrollPosition})
+      const scrollElm = contentsRef.current.parentElement;
+      scrollElm.scrollTop = newScrollPosition;
     }
+  }
+
+  const handleCreateObservers = () => {
+    console.log('[f] [draft] handleCreateObservers')
+    let firstChild = getTopObservableBlock(contentsRef?.current?.firstChild); // getNextSibling(contentsRef?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
+    let lastChild = getBottomObservableBlock(contentsRef?.current?.lastChild); // getPreviousSibling(contentsRef?.current?.lastChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, false));
+
+    window.__devTopElement = firstChild;
+    window.__devBottomElement = lastChild;
+
+    console.log('[f] [draft] %c OBSERVING NEW', 'color: #532523', {
+      nowKey: currentLazyLoad.key,
+      observerTop: observerLazyTop.current,
+      observerBottom: observerLazyBottom.current,
+      firstChild,
+      lastChild
+    })
+
+    if(!firstChild || !lastChild) {
+      // console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
+      return;
+    }
+
+    handleUpdateScrollPosition();
 
     handleUnobserve(observerLazyTop.current, observedElmTop.current);
     handleUnobserve(observerLazyBottom.current, observedElmBottom.current);
@@ -1137,7 +1135,7 @@ const DraftEditorContents = React.memo((props) => {
     if (block) {
       outputBlocks.push(block);
       if (ii === processedBlocks.length) {
-        console.log('[f] LAST BLOCK - add event listenr to block', {block});
+        console.log('[f] RENDER - LAST BLOCK - add event listenr to block', {block});
       }
     }
   }
