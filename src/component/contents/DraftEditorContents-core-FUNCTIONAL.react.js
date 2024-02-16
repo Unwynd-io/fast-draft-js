@@ -682,23 +682,6 @@ const DraftEditorContents = React.memo((props) => {
 
     console.log('[f] [scroll] %c useEffect RECREATE OBSERVERS ON SCROLL, ', 'color: #123153', { areObservedElementsNew, firstChild, lastChild, OBSTOP: observedElmTop.current, OBSBOTTOM: observedElmBottom.current, outputBlockIndexes, blockMapSize: currentBlockMap.size, shouldLazyLoad});
 
-    // console.log('[f] [scroll] %c useEffect, ', 'color: #123153', {
-    //   shouldLazyLoad,
-    //   currentLazyLoad,
-    //   currentBlockMapArr: currentBlockMap.toArray(),
-    //   currentProps: props,
-    //   blockKeyToScrollTo,
-    //   currentFocusBlockKey,
-    //   topElm: observedElmTop.current,
-    //   bottomElm: observedElmBottom.current,
-    //   observerTop: observerLazyTop.current,
-    //   observerBottom: observerLazyBottom.current,
-    //   contents: contentsRef?.current?.children,
-    //   firstChild: contentsRef?.current?.firstChild,
-    //   lastChild: contentsRef?.current?.lastChild,
-    //   outputBlockIndexes,
-    // })
-
     // TODO: improve performance on state change when we don't need to recalculate lazyBlocks
     // if (this.state.shouldRecalculateLazyLoad) {
     //   this.setState({...this.state, shouldRecalculateLazyLoad: false});
@@ -729,9 +712,9 @@ const DraftEditorContents = React.memo((props) => {
 
   }, [outputBlockIndexes, currentFocusBlockKey])
 
-  /*
-   * Updating scroll position - does not work in separate useEffect currently
-   */
+  // /*
+  //  * Updating scroll position - does not work in separate useEffect currently
+  //  */
 
   // React.useEffect(() => {
 
@@ -921,6 +904,8 @@ const DraftEditorContents = React.memo((props) => {
    * Workaround for the scrollTop === 0 position, we should not allow the user to be at the top unless we are at the top of the page 
    */
 
+  // TODO: MOVE IF NEEDED
+
   // TODO: test if needed with custom scroll adjust
   React.useEffect(() => {
 
@@ -979,9 +964,6 @@ const DraftEditorContents = React.memo((props) => {
   let lazyLoadBlocks = [];
 
   for (let i = 0; i < outputBlockIndexes.length; i++) {
-    if (i % 10 === 0) {
-      // console.log('[f] inserting lazy block (every 10th log)', {i, index: outputBlockIndexes[i], block: blocksAsArray[outputBlockIndexes[i]]})
-    }
     const block = blocksAsArray[outputBlockIndexes[i]];
     if (block) {
       lazyLoadBlocks.push(block);
