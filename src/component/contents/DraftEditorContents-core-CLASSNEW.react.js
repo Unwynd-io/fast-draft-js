@@ -932,7 +932,7 @@ class DraftEditorContents extends React.Component<Props> {
 
     if (outputBlockIndexes !== prevState.outputBlockIndexes || this.state.currentFocusBlockKey !== prevState.currentFocusBlockKey) {
 
-      if (this.state.currentFocusBlockKey > '' && !!getBlockByKey(this.state.currentFocusBlockKey)) {
+      if (this.state.currentFocusBlockKey > '' && !!this.getBlockByKey(this.state.currentFocusBlockKey)) {
 
         this.handleFocusBlock(this.state.currentFocusBlockKey);
         this.canObserve.current = true;
