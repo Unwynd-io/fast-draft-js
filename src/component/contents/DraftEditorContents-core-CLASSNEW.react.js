@@ -79,8 +79,6 @@ const DRAFT_BLOCK_HEIGHT = 50; // ~47px
 const MAX_BLOCKS_TO_DISPLAY = 50;
 const LAZY_LOAD_BLOCK_OFFSET = 4;
 
-const MAX_SCROLL_OFFSET = LAZY_LOAD_BLOCK_OFFSET * DRAFT_BLOCK_HEIGHT;
-
 /*
  * Utill methods
  */
@@ -214,7 +212,7 @@ const mapFilteredBlock = (block, {index, isSection, hidden}) => {
 }
 
 const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKey}): number[] => {
-  console.log('[f] [draft] CALL getLazyLoadedBlocks - props', {editorState, blocks: _blocks, initialBlockKey});
+  // console.log('[f] [draft] CALL getLazyLoadedBlocks - props', {editorState, blocks: _blocks, initialBlockKey});
 
   /*
    * Remove blocks that are inside hidden sections
@@ -280,13 +278,13 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
   const lastFilteredBlock = blocks[blocks.length - 1];
 
   if (lastOriginalBlock.getKey() !== lastFilteredBlock.getKey()) {
-    console.log('[f] [draft] last block is not the same', {lastOriginalBlock, lastFilteredBlock})
+    // console.log('[f] [draft] last block is not the same', {lastOriginalBlock, lastFilteredBlock})
     const blockType = lastOriginalBlock.getType();
     const block = mapFilteredBlock(lastOriginalBlock, {index: _blocks.length - 1, isSection: blockType === 'ordered-list-item', hidden: true});
     blocks.push(block)
   }
 
-  console.log('[f] [draft] filtere blocks: ', {blocks});
+  // console.log('[f] [draft] filtere blocks: ', {blocks});
   
   let lazyLoadBlockIndexes = [];
 
@@ -309,16 +307,16 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
 
   const lazyLoadBlockIndex = blocks.findIndex(block => block.key === initialBlockKey);
 
-  console.log('[f] [draft] getLazyLoadedBlocks - props', {
-    lazyLoadBlockIndex,
-    _startOffsetBlockIndex,
-    _endOffsetBlockIndex,
-    startOffsetBlockIndex,
-    endOffsetBlockIndex,
-    blockOnIndex: blocks[lazyLoadBlockIndex],
-    initialBlockKey,
-    blocks,
-   })
+  // console.log('[f] [draft] getLazyLoadedBlocks - props', {
+  //   lazyLoadBlockIndex,
+  //   _startOffsetBlockIndex,
+  //   _endOffsetBlockIndex,
+  //   startOffsetBlockIndex,
+  //   endOffsetBlockIndex,
+  //   blockOnIndex: blocks[lazyLoadBlockIndex],
+  //   initialBlockKey,
+  //   blocks,
+  //  })
 
   const BLOCK_RANGE = Math.floor(MAX_BLOCKS_TO_DISPLAY / 2);
 
@@ -346,7 +344,7 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
     }
   }
 
-  console.log('[f] [draft] %c calc lazy load blocks', 'color: #163432', {start, end, difference, _startOffsetBlockIndex, _endOffsetBlockIndex, startOffsetBlockIndex, endOffsetBlockIndex});
+  // console.log('[f] [draft] %c calc lazy load blocks', 'color: #163432', {start, end, difference, _startOffsetBlockIndex, _endOffsetBlockIndex, startOffsetBlockIndex, endOffsetBlockIndex});
 
   /*
    * Map the lazy blocks
@@ -357,20 +355,20 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
   // TODO: check what should be last block
 
   if (start > FIRST_BLOCK) {
-    console.log('[f] [draft] start > FIRST_BLOCK, adding first block')
+    // console.log('[f] [draft] start > FIRST_BLOCK, adding first block')
     lazyLoadBlockIndexes.push(FIRST_BLOCK);
   }
 
   // Start selection off screen (ABOVE)
   if (startSelectionExists && (_startOffsetBlockIndex < start && _startOffsetBlockIndex !== FIRST_BLOCK)) {
-    console.log('[f] [draft] loading START selection off screen ABOVE')
+    // console.log('[f] [draft] loading START selection off screen ABOVE')
     lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (ABOVE)
   if (endSelectionExists && ((_endOffsetBlockIndex < start && _endOffsetBlockIndex !== FIRST_BLOCK)
     && _endOffsetBlockIndex !== _startOffsetBlockIndex)) {
-    console.log('[f] [draft] loading END selection off screen ABOVE')
+    // console.log('[f] [draft] loading END selection off screen ABOVE')
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
@@ -383,25 +381,25 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
 
   // Start selection off screen (BELOW)
   if (startSelectionExists && (_startOffsetBlockIndex > end && _startOffsetBlockIndex !== LAST_BLOCK)) {
-    console.log('[f] [draft] loading START selection off screen BELOW')
+    // console.log('[f] [draft] loading START selection off screen BELOW')
     lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (BELOW)
   if (endSelectionExists &&  ((_endOffsetBlockIndex > end && _endOffsetBlockIndex !== LAST_BLOCK)
     && _endOffsetBlockIndex !== _startOffsetBlockIndex)) {
-    console.log('[f] [draft] loading END selection off screen BELOW')
+    // console.log('[f] [draft] loading END selection off screen BELOW')
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
   // TODO: fix last block with sections hidden and last block should be loaded always for ctrl + a
 
   if (end < LAST_BLOCK + 1) {
-    console.log('[f] [draft] end < LAST_BLOCK, loading last block')
+    // console.log('[f] [draft] end < LAST_BLOCK, loading last block')
     lazyLoadBlockIndexes.push(_blocks.length - 1);
   }
 
-  console.log('[f] [draft] GET INDEXES, CALCULTATED: ', {lazyLoadBlockIndexes})
+  // console.log('[f] [draft] GET INDEXES, CALCULTATED: ', {lazyLoadBlockIndexes})
 
   return lazyLoadBlockIndexes;
 }
@@ -440,7 +438,10 @@ class DraftEditorContents extends React.Component<Props> {
     this.observedElmTopParams = React.createRef();
     this.observedElmBottomParams = React.createRef();
 
+    // For top scrolling
     this.isTopOfPage = React.createRef();
+    this.topBlocksOffsetHeight = React.createRef();
+
     this.canObserve = React.createRef();
 
     // Handlers
@@ -486,125 +487,96 @@ class DraftEditorContents extends React.Component<Props> {
   // dtk6k - on the 3rd up, or quickly scroll up
   // ?1rl32
 
-  handleUpdateScrollPosition = ({currentLazyLoad, firstChild, lastChild, firstChildParamsBefore, lastChildParamsBefore}) => {
-    console.log('[f] [scroll] %c UPDATING SCORLL POSTION, ', 'color: #161', {
-      currentLazyLoad,
-      outputBlockIndexes: this.state.outputBlockIndexes,
-      blockKeyToScrollTo: this.props.blockKeyToScrollTo,
-      currentFocusBlockKey: this.state.currentFocusBlockKey,
-      props: this.props,
-      firstChild,
-      lastChild,
-      firstChildParamsBefore, 
-      lastChildParamsBefore
-    });
+  handleUpdateScrollPosition = ({
+    currentLazyLoad,
+    firstChild,
+    lastChild,
+    firstChildParamsBefore,
+    lastChildParamsBefore,
+  }) => {
+    // console.log('[f] [scroll] %c UPDATING SCORLL POSTION, ', 'color: #161', {
+    //   currentLazyLoad,
+    //   outputBlockIndexes: this.state.outputBlockIndexes,
+    //   blockKeyToScrollTo: this.props.blockKeyToScrollTo,
+    //   currentFocusBlockKey: this.state.currentFocusBlockKey,
+    //   props: this.props,
+    //   firstChild,
+    //   lastChild,
+    //   firstChildParamsBefore,
+    //   lastChildParamsBefore,
+    // });
 
     let newScrollPosition = null;
 
     // const lchNode = domNode.querySelector(`[data-offset-key="${lastChild?.dataset?.offsetKey}"]`)
 
-    if (currentLazyLoad.direction === 'TOP') {
-      const oldRects = firstChildParamsBefore;
-      let newRects = firstChild.getBoundingClientRect?.();
+    let oldRects, newRects;
 
-      console.log('[f] [scroll] newRects TOP initially', {newRects, newRectsTest: firstChild.getClientRects(), offsetTop: firstChild.offsetTop})
+    if (!!firstChild && currentLazyLoad.direction === 'TOP') {
+      oldRects = firstChildParamsBefore;
+      newRects = firstChild.getBoundingClientRect?.();
 
-      if (firstChild.getClientRects().length === 0) {
-        const domNode = findDOMNode(this);
-        const fchNode = domNode.querySelector(`[data-offset-key="${firstChild?.dataset?.offsetKey}"]`)
+      // Backup when DOM is not fully calculated
+      if (
+        firstChild.getClientRects()
+          .length === 0
+      ) {
+        const domNode = findDOMNode(
+          this,
+        );
+        const fchNode = domNode.querySelector(
+          `[data-offset-key="${firstChild.dataset.offsetKey}"]`,
+        );
+
         newRects = fchNode?.getBoundingClientRect?.();
-        console.log('[f] [scroll] newRects TOP replacement', {newRects, newRectsTest: fchNode?.getClientRects(), offsetTop: fchNode?.offsetTop})
+        // console.log(
+        //   '[f] [scroll] newRects TOP replacement',
+        //   {
+        //     newRects,
+        //     newRectsTest: fchNode?.getClientRects(),
+        //     offsetTop:
+        //       fchNode?.offsetTop,
+        //   },
+        // );
       }
-
-      if (newRects.top !== 0) {
-        const currentScroll = this.contentsRef.current.parentElement.scrollTop;
-        newScrollPosition = currentScroll + (newRects.top - oldRects.top);
-        console.log('[f] [scroll] %c scrolling to top', 'color: #125122', {
-          currentScroll,
-          newScrollPosition,
-          OBS_EL: this.observedElmTop,
-          oldRectsTop: oldRects.top,
-          newRectsTop: newRects.top,
-        });
-      } else if (newRects.top === 0) {
-        console.warn('[f] [scroll] IT IS ZERO');
-        setTimeout(() => {
-          const newRects = firstChild.getBoundingClientRect();
-          console.log('[f] [scroll] after timeout the rects are:', {
-            newRects,
-            newRectsTop: newRects.top,
-          });
-
-          const currentScroll = this.contentsRef.current.parentElement
-            .scrollTop;
-
-          newScrollPosition = currentScroll + (newRects.top - oldRects.top);
-          console.log(
-            '[f] [scroll] %c handleUpdateScrollPosition IN SETTIMEOUT TOP',
-            'color: #472237',
-            {newScrollPosition},
-          );
-          const scrollElm = this.contentsRef.current.parentElement;
-          scrollElm.scrollTop = newScrollPosition;
-        }, 0);
-      }
+    } else if (currentLazyLoad.direction === 'BOTTOM') {
+      oldRects = lastChildParamsBefore;
+      newRects = lastChild.getBoundingClientRect();
     }
 
-    if (currentLazyLoad.direction === 'BOTTOM') {
-      const oldRects = lastChildParamsBefore;
-      const newRects = lastChild.getBoundingClientRect();
+    if (
+      !!newRects &&
+      !!oldRects &&
+      newRects.top !== 0 &&
+      oldRects.top !== newRects.top
+    ) {
+      const currentScroll = this.contentsRef.current.parentElement.scrollTop;
+      newScrollPosition = currentScroll + (newRects.top - oldRects.top);
 
-      console.log('[f] [scroll] newRects BOTTOM', {newRects, newRectsTest: lastChild.getClientRects(), offsetTop: lastChild.offsetTop})
-
-      if (newRects.top !== 0) {
-        const currentScroll = this.contentsRef.current.parentElement.scrollTop;
-        newScrollPosition = currentScroll + (newRects.top - oldRects.top); 
-        console.log('[f] [scroll] %c scrolling to bottom', 'color: #125122', {
-          currentScroll,
-          newScrollPosition,
-          OBS_EL: this.observedElmBottom,
-          oldRectsTop: oldRects.top,
-          newRectsTop: newRects.top,
-        });
-      } else if (newRects.top === 0) {
-        console.warn('[f] [scroll] IT IS ZERO');
-        setTimeout(() => {
-          const newRects = lastChild.getBoundingClientRect();
-          console.log('[f] [scroll] after timeout the rects are:', {
-            newRects,
-            newRectsTop: newRects.top,
-          });
-
-          const currentScroll = this.contentsRef.current.parentElement
-            .scrollTop;
-
-          newScrollPosition = currentScroll + (newRects.top - oldRects.top);
-          console.log(
-            '[f] [scroll] %c handleUpdateScrollPosition IN SETTIMEOUT BOTTOM',
-            'color: #472237',
-            {newScrollPosition},
-          );
-          const scrollElm = this.contentsRef.current.parentElement;
-          scrollElm.scrollTop = newScrollPosition;
-        }, 0);
-      }
+      // console.log('[f] [scroll] %c scrolling to', 'color: #125122', {
+      //   currentScroll,
+      //   newScrollPosition,
+      //   OBS_EL: this.observedElmTop,
+      //   oldRectsTop: oldRects.top,
+      //   newRectsTop: newRects.top,
+      // });
     }
 
-    console.log('[f] [scroll] after calculation');
+    // console.log('[f] [scroll] after calculation');
 
     if (newScrollPosition) {
-      console.log(
-        '[f] [scroll] %c handleUpdateScrollPosition',
-        'color: #772237',
-        {newScrollPosition},
-      );
+      // console.log(
+      //   '[f] [scroll] %c handleUpdateScrollPosition',
+      //   'color: #772237',
+      //   {newScrollPosition},
+      // );
       const scrollElm = this.contentsRef.current.parentElement;
       scrollElm.scrollTop = newScrollPosition;
     }
   };
 
   handleCreateObservers = () => {
-    console.log('[f] [draft] handleCreateObservers');
+    // console.log('[f] [draft] handleCreateObservers');
     let firstChild = getTopObservableBlock(
       this.contentsRef?.current?.firstChild,
     ); // getNextSibling(contentsRefthis.?.current?.firstChild, LAZY_LOAD_BLOCK_OFFSET, (elm) => getFirstDraftBlock(elm, true));
@@ -615,37 +587,40 @@ class DraftEditorContents extends React.Component<Props> {
     window.__devTopElement = firstChild;
     window.__devBottomElement = lastChild;
 
-    console.log('[f] [draft] %c OBSERVING NEW', 'color: #532523', {
-      nowKey: this.state.currentLazyLoad.key,
-      observerTop: this.observerLazyTop.current,
-      observerBottom: this.observerLazyBottom.current,
-      firstChild,
-      lastChild,
-    });
+    // console.log('[f] [draft] %c OBSERVING NEW', 'color: #532523', {
+    //   nowKey: this.state.currentLazyLoad.key,
+    //   observerTop: this.observerLazyTop.current,
+    //   observerBottom: this.observerLazyBottom.current,
+    //   firstChild,
+    //   lastChild,
+    // });
 
     if (!firstChild || !lastChild) {
       // console.log('[f] %c NO FIRST OR LAST CHILD', 'color: red', {firstChild, lastChild})
       return;
     }
-    
-    const newRectsTop = firstChild.getBoundingClientRect();
-    const newRectsBottom = lastChild.getBoundingClientRect();
 
     let oldRectsParamsTop = this.observedElmTopParams.current;
     let oldRectsParamsBottom = this.observedElmBottomParams.current;
-    
+
     // The initial load - no previous values
-    if (!oldRectsParamsTop) { 
-      console.log('[f] [draft] NO PREVIOUS VALUE TOP')
+    if (!oldRectsParamsTop) {
+      // console.log('[f] [draft] NO PREVIOUS VALUE TOP');
       oldRectsParamsTop = this.observedElmTop.current?.getBoundingClientRect();
     }
 
     if (!oldRectsParamsBottom) {
-      console.log('[f] [draft] NO PREVIOUS VALUE BOTTOM')
-      oldRectsParamsBottom = this.observedElmBottom.current?.getBoundingClientRect();;
+      // console.log('[f] [draft] NO PREVIOUS VALUE BOTTOM');
+      oldRectsParamsBottom = this.observedElmBottom.current?.getBoundingClientRect();
     }
 
-    this.handleUpdateScrollPosition({currentLazyLoad: this.state.currentLazyLoad, firstChild: this.observedElmTop.current, lastChild: this.observedElmBottom.current, firstChildParamsBefore: oldRectsParamsTop, lastChildParamsBefore: oldRectsParamsBottom });
+    this.handleUpdateScrollPosition({
+      currentLazyLoad: this.state.currentLazyLoad,
+      firstChild: this.observedElmTop.current,
+      lastChild: this.observedElmBottom.current,
+      firstChildParamsBefore: oldRectsParamsTop,
+      lastChildParamsBefore: oldRectsParamsBottom,
+    });
 
     this.handleUnobserve(
       this.observerLazyTop.current,
@@ -658,26 +633,15 @@ class DraftEditorContents extends React.Component<Props> {
 
     const observerCallback = direction =>
       getHandleIntersection((entry, observer) => {
-        console.log(
-          `[f] [draft] %c OBSERVER ${direction} INTERSECTED CALLBACK`,
-          'color: #772323',
-          {
-            entry,
-            observer,
-            lastChild,
-            entryTarget: entry?.target,
-            entryTargetDataset: entry?.target?.dataset,
-          },
-        );
 
         if (entry.isIntersecting) {
           observer.disconnect();
           const blockKey = entry?.target?.dataset?.offsetKey?.split('-')?.[0];
-          console.log(
-            `[f] [draft] %c SETTING NEW BLOCK ${direction} Target div is now in the viewport!`,
-            'color: #565432',
-            {entry, observer, blockKey, firstChild, lastChild},
-          );
+          // console.log(
+          //   `[f] [draft] %c SETTING NEW BLOCK ${direction} Target div is now in the viewport!`,
+          //   'color: #565432',
+          //   {entry, observer, blockKey, firstChild, lastChild},
+          // );
 
           // TODO: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
           /* ^ not sure if this code is the right idea for above.
@@ -724,10 +688,8 @@ class DraftEditorContents extends React.Component<Props> {
 
     const observerSettings = {
       root: this.contentsRef.current.parentElement,
-      rootMargin: '0px 0px 0px 0px',
+      rootMargin: '100px 0px 0px 0px',
     };
-
-    // console.log('[f] observerSettings', {observerSettings})
 
     this.observerLazyTop.current = new IntersectionObserver(
       observerCallback('TOP'),
@@ -744,44 +706,42 @@ class DraftEditorContents extends React.Component<Props> {
     this.observerLazyTop.current.observe(this.observedElmTop.current);
     this.observerLazyBottom.current.observe(this.observedElmBottom.current);
 
-    console.log('[f] [draft] AFTER OBSERVER INIT', {
-      observerBottom: this.observerLazyBottom.current,
-      obsererTop: this.observerLazyTop.current,
-      topElm: this.observedElmTop.current,
-      bottomElm: this.observedElmBottom.current,
-    });
+    // console.log('[f] [draft] AFTER OBSERVER INIT', {
+    //   observerBottom: this.observerLazyBottom.current,
+    //   obsererTop: this.observerLazyTop.current,
+    //   topElm: this.observedElmTop.current,
+    //   bottomElm: this.observedElmBottom.current,
+    // });
   };
 
-  
-
-  handleEditorScroll = (e) => {
+  handleEditorScroll = e => {
     // console.log('[f] [scroll] %c SCROLL EVENT', 'color: #849', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
 
     const scrollElm = this.contentsRef.current.parentElement;
     const currentScroll = scrollElm.scrollTop;
 
     if (!this.isTopOfPage.current) {
-      if (currentScroll < MAX_SCROLL_OFFSET) {
-        // console.log(`[f] [scroll] %c RESETTING SCROLL TO ${MAX_SCROLL_OFFSET}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
-        scrollElm.scrollTop = MAX_SCROLL_OFFSET;
+      if (currentScroll < this.topBlocksOffsetHeight.current) {
+        // console.log(`[f] [scroll] %c RESETTING SCROLL TO ${this.topBlocksOffsetHeight.current}px`, 'color: #123153', {e, scrollTop: scrollElm.scrollTop, isTopOfPage, topElm: observedElmTop.current, bottomElm: observedElmBottom.current, observerTop: observerLazyTop.current, observerBottom: observerLazyBottom.current})
+        scrollElm.scrollTop = this.topBlocksOffsetHeight.current;
       }
     }
   };
 
   shouldComponentUpdate(nextProps: Props, nextState): boolean {
-    console.log(
-      '[f] shouldComponentUpdate IN DraftEditorContents-core.react.js',
-      {
-        nextState,
-        currentState: this.state,
-        shouldUpdateObserver:
-          this.state.currentLazyLoad.key !== nextState.currentLazyLoad.key,
-        nextBlockMapArr: nextProps?.editorState
-          ?.getCurrentContent()
-          ?.getBlockMap()
-          ?.toArray(),
-      },
-    );
+    // console.log(
+    //   '[f] shouldComponentUpdate IN DraftEditorContents-core.react.js',
+    //   {
+    //     nextState,
+    //     currentState: this.state,
+    //     shouldUpdateObserver:
+    //       this.state.currentLazyLoad.key !== nextState.currentLazyLoad.key,
+    //     nextBlockMapArr: nextProps?.editorState
+    //       ?.getCurrentContent()
+    //       ?.getBlockMap()
+    //       ?.toArray(),
+    //   },
+    // );
 
     const prevEditorState = this.props.editorState;
     const nextEditorState = nextProps.editorState;
@@ -818,7 +778,7 @@ class DraftEditorContents extends React.Component<Props> {
           nextEditorState.getCurrentContent() === nextNativeContent) ||
         (wasComposing && nowComposing))
     ) {
-      console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
+      // console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
       return false;
     }
 
@@ -831,19 +791,19 @@ class DraftEditorContents extends React.Component<Props> {
     const prevFocusKey = prevEditorState.getBlockKeyToScrollTo();
     const nextFocusKey = nextEditorState.getBlockKeyToScrollTo();
 
-    console.log('[f] SHOULD UPDATE? FINAL STEP', {
-      result:
-        wasComposing !== nowComposing ||
-        prevContent !== nextContent ||
-        prevDecorator !== nextDecorator ||
-        nextEditorState.mustForceSelection() ||
-        stateChanged ||
-        prevSelection !== nextSelection ||
-        prevFocusKey !== nextFocusKey,
+    // console.log('[f] SHOULD UPDATE? FINAL STEP', {
+    //   result:
+    //     wasComposing !== nowComposing ||
+    //     prevContent !== nextContent ||
+    //     prevDecorator !== nextDecorator ||
+    //     nextEditorState.mustForceSelection() ||
+    //     stateChanged ||
+    //     prevSelection !== nextSelection ||
+    //     prevFocusKey !== nextFocusKey,
 
-      currentState: this.state,
-      nextState,
-    });
+    //   currentState: this.state,
+    //   nextState,
+    // });
 
     return (
       wasComposing !== nowComposing ||
@@ -857,11 +817,6 @@ class DraftEditorContents extends React.Component<Props> {
   }
 
   componentDidMount() {
-    console.log('[f] [draft] CLASS componentDidMount', {
-      props: this.props,
-      state: this.state,
-      edRef: this.contentsRef.current
-    });
     const blocksAsArray = this.props.editorState
       .getCurrentContent()
       .getBlocksAsArray();
@@ -888,18 +843,10 @@ class DraftEditorContents extends React.Component<Props> {
   }
 
   getSnapshotBeforeUpdate(prevProps, prevState) {
-    console.log(
-      '[f] [draft] %c CLASS getSnapshotBeforeUpdate',
-      'color: orange',
-      {
-        prevProps,
-        prevState: JSON.parse(JSON.stringify(prevState)),
-        props: this.props,
-        state: JSON.parse(JSON.stringify(this.state)),
-      },
-    );
-
-    if (this.contentsRef?.current && this.state.outputBlockIndexes !== prevState.outputBlockIndexes) {
+    if (
+      this.contentsRef?.current &&
+      this.state.outputBlockIndexes !== prevState.outputBlockIndexes
+    ) {
       const firstChild = getTopObservableBlock(
         this.contentsRef?.current?.firstChild,
       );
@@ -907,119 +854,18 @@ class DraftEditorContents extends React.Component<Props> {
         this.contentsRef?.current?.lastChild,
       );
 
-      console.log('[f] [draft] NOT EQUAL INDEXES', {
-        firstChild,
-        lastChild,
-        outputBlockIndexes: this.state.outputBlockIndexes,
-        prevOutputBlockIndexes: prevState.outputBlockIndexes,
-      });
-
       if (!firstChild || !lastChild) {
-        console.log('[f] [draft] no first or last child', {
-          firstChild,
-          lastChild,
-        });
         return null;
       }
 
-      // const oldRefTop = this.observedElmTop.current;
-      // const oldRefBottom = this.observedElmBottom.current;
-
-      // const isDOMUpdated =
-      //   firstChild !== oldRefTop || lastChild !== oldRefBottom;
-
-      // if (!isDOMUpdated) {
-      //   console.log('[f] [draft] DOM NOT UPDATED', {
-      //     firstChild,
-      //     lastChild,
-      //     oldRefTop,
-      //     oldRefBottom,
-      //   });
-      //   return null;
-      // } else {
-      //   console.log('[f] [draft] DOM IS UPDATED')
-      // }
-
-      // const newRectsTop = firstChild.getBoundingClientRect();
-      // const newRectsBottom = lastChild.getBoundingClientRect();
-
-      // let oldRectsParamsTop = this.observedElmTopParams.current?.rects;
-      // let oldRectsParamsBottom = this.observedElmBottomParams.current?.rects;
-      
-      // if (!oldRectsParamsTop && !!this.observedElmTop.current) {
-      //   oldRectsParamsTop = this.observedElmTop.current.getBoundingClientRect();
-      // }
-
-      // if (!oldRectsParamsBottom && !!this.observedElmBottom.current) {
-      //   oldRectsParamsBottom = this.observedElmBottom.current.getBoundingClientRect();
-      // }
-
-      // // The initial load - no previous values
-      // if (!oldRectsParamsTop) {
-      //   oldRectsParamsTop = newRectsTop;
-      // }
-
-      // if (!oldRectsParamsBottom) {
-      //   oldRectsParamsBottom = newRectsBottom;
-      // }
-
-      // const oldRefTopRect = this.observedElmTop.current?.getBoundingClientRect();
-      // const oldRefBottomRect = this.observedElmBottom.current?.getBoundingClientRect();
-
       const topElm = this.observedElmTop.current;
       const bottomElm = this.observedElmBottom.current;
-
-      const paramsBefore = JSON.parse(JSON.stringify({
-        observerElmTopRects: this.observedElmTopParams.current,
-        observerElmBottomRects: this.observedElmBottomParams.current,
-      }));
 
       const observerElmTopRects = topElm?.getBoundingClientRect();
       const observerElmBottomRects = bottomElm?.getBoundingClientRect();
 
       this.observedElmTopParams.current = observerElmTopRects;
       this.observedElmBottomParams.current = observerElmBottomRects;
-
-
-      console.log(
-        '[f] [draft] %c getSnapshotBeforeUpdate - SAVING VALUES',
-        'color: orange',
-        {
-          firstChild,
-          lastChild,
-          topElm,
-          bottomElm,
-          observerElmTopRects,
-          observerElmBottomRects,
-          observerElmTopRectsTop: observerElmTopRects?.top,
-          observerElmBottomRectsTop: observerElmBottomRects?.top,
-          paramsBefore
-
-          // newRectsTop,
-          // newRectsBottom,
-          // oldRefTop,
-          // oldRefBottom,
-          // oldRefTopRect,
-          // oldRefBottomRect,
-          // oldRectsParamsTop,
-          // oldRectsParamsBottom,
-          // outputBlockIndexes: this.state.outputBlockIndexes,
-          // prevOutputBlockIndexes: prevState.outputBlockIndexes,
-        },
-      );
-
-      // // TODO: return value for scroll position
-      // this.handleUpdateScrollPosition({
-      //   currentLazyLoad: this.state.currentLazyLoad,
-      //   firstChild,
-      //   lastChild,
-      //   firstChildParamsBefore: oldRectsParamsTop,
-      //   lastChildParamsBefore: oldRectsParamsBottom,
-      // });
-
-      // return {
-      //   scrollUpdated: true,
-      // };
     }
 
     return null;
@@ -1035,22 +881,22 @@ class DraftEditorContents extends React.Component<Props> {
   // componentDidUpdate 3 - Updating the observers here after DOM is updated
 
   componentDidUpdate(prevProps, prevState, snapshot) {
-    console.log('[f] [draft] %c CLASS COMPONENT DID UPDATE', 'color: #562162', {
-      snapshot,
-      prevProps,
-      prevState,
-      props: this.props,
-      state: this.state,
-      CURRENT_LAZY_LOAD: this.state.currentLazyLoad,
-      PREV_LAZY_LOAD: prevState.currentLazyLoad,
-      CURRENT_LAZY_LOAD_DIFFERENT:
-        this.state.currentLazyLoad !== prevState.currentLazyLoad,
+    // console.log('[f] [draft] %c CLASS COMPONENT DID UPDATE', 'color: #562162', {
+    //   snapshot,
+    //   prevProps,
+    //   prevState,
+    //   props: this.props,
+    //   state: this.state,
+    //   CURRENT_LAZY_LOAD: this.state.currentLazyLoad,
+    //   PREV_LAZY_LOAD: prevState.currentLazyLoad,
+    //   CURRENT_LAZY_LOAD_DIFFERENT:
+    //     this.state.currentLazyLoad !== prevState.currentLazyLoad,
 
-      CURRENT_EDITOR_STATE: this.props.editorState,
-      PREV_EDITOR_STATE: prevProps.editorState,
-      CURRENT_EDITOR_STATE_DIFFERENT:
-        this.props.editorState !== prevProps.editorState,
-    });
+    //   CURRENT_EDITOR_STATE: this.props.editorState,
+    //   PREV_EDITOR_STATE: prevProps.editorState,
+    //   CURRENT_EDITOR_STATE_DIFFERENT:
+    //     this.props.editorState !== prevProps.editorState,
+    // });
 
     /*
      * Calculate indexes to render
@@ -1066,26 +912,26 @@ class DraftEditorContents extends React.Component<Props> {
         .getCurrentContent()
         .getBlocksAsArray();
 
-      console.log(
-        '[f] [draft] [scroll] %c componentDidUpdate 1 - CALC INDEXES',
-        'color: #888854',
-        {
-          currentLazyLoad: this.state.currentLazyLoad,
-          blockKeyToScrollTo: this.props.blockKeyToScrollTo,
-          blocksAsArray,
-          props: this.props,
-        },
-      );
+      // console.log(
+      //   '[f] [draft] [scroll] %c componentDidUpdate 1 - CALC INDEXES',
+      //   'color: #888854',
+      //   {
+      //     currentLazyLoad: this.state.currentLazyLoad,
+      //     blockKeyToScrollTo: this.props.blockKeyToScrollTo,
+      //     blocksAsArray,
+      //     props: this.props,
+      //   },
+      // );
 
       let areIndexesSorted = false;
 
       if (this.state.currentLazyLoad.key > '') {
-        console.log('[f]  [draft] LAZY LOAD KEY EXISTS, CALCULATING INDEXES', {
-          currentLazyLoad: this.state.currentLazyLoad,
-          blockKeyToScrollTo: this.props.blockKeyToScrollTo,
-          blocksAsArray,
-          props: this.props,
-        });
+        // console.log('[f]  [draft] LAZY LOAD KEY EXISTS, CALCULATING INDEXES', {
+        //   currentLazyLoad: this.state.currentLazyLoad,
+        //   blockKeyToScrollTo: this.props.blockKeyToScrollTo,
+        //   blocksAsArray,
+        //   props: this.props,
+        // });
 
         outputBlockIndexes = getLazyLoadedBlockIndexes({
           editorState: this.props.editorState,
@@ -1119,7 +965,7 @@ class DraftEditorContents extends React.Component<Props> {
 
         // TODO: MOVE TO componentDidMount
       } else if (!this.state.currentLazyLoad.key) {
-        console.log('[f] [draft] no lazy load key, only first blocks');
+        // console.log('[f] [draft] no lazy load key, only first blocks');
         let lazyLoadBlocks = blocksAsArray.slice(
           0,
           MAX_BLOCKS_TO_DISPLAY + LAZY_LOAD_BLOCK_OFFSET * 2,
@@ -1139,54 +985,19 @@ class DraftEditorContents extends React.Component<Props> {
       // setTopOfPage(areIndexesSorted);
       this.isTopOfPage.current = areIndexesSorted;
 
-      console.log('[f] [draft] [scroll] LAYOUT FINISHED ', {
-        outputBlockIndexes,
-        areIndexesSorted,
-      });
     }
 
     /*
-     * Refresh the observers on scroll
+     * Events on indexes change
      */
-
-    console.log('[f] [draft] before observers: ', {
-      THIS_CURRENT_BLOCKS: this.state.outputBlockIndexes,
-      CURRENT_BLOCKS: outputBlockIndexes,
-      PREV_CURRENT_BLOCKS: prevState.outputBlockIndexes,
-      BLOCK_DIFFERENT: outputBlockIndexes !== prevState.outputBlockIndexes,
-      THIS_BLOCKS_DIFFERENT:
-        this.state.outputBlockIndexes !== prevState.outputBlockIndexes,
-    });
-
-    // ---------------
-
-    let firstChild = getTopObservableBlock(
-      this.contentsRef?.current?.firstChild,
-    );
-    let lastChild = getBottomObservableBlock(
-      this.contentsRef?.current?.lastChild,
-    );
-
-    const oldRefTop = this.observedElmTop.current;
-    const oldRefBottom = this.observedElmBottom.current;
-
-    const isDOMUpdated =
-      firstChild !== oldRefTop || lastChild !== oldRefBottom;
-
-    console.log('[f] [draft] IS DOM UPDATED IN COMPONENT DID UPDATE? ', {
-      isDOMUpdated,
-      firstChild,
-      lastChild,
-      oldRefTop,
-      oldRefBottom,
-    })
-
-    // ---------------
 
     // prevState.outputBlockIndexes !== outputBlockIndexes || prevState.currentLazyLoad !== this.state.currentLazyLoad
 
-    if (this.contentsRef?.current) {
-      console.log('[f] [draft] IN OBSERVERS');
+    if (prevState.outputBlockIndexes !== outputBlockIndexes) {
+      // console.log('[f] [draft] IN OBSERVERS');
+
+      const oldRefTop = this.observedElmTop.current;
+      const oldRefBottom = this.observedElmBottom.current;
 
       let firstChild = getTopObservableBlock(
         this.contentsRef?.current?.firstChild,
@@ -1194,25 +1005,24 @@ class DraftEditorContents extends React.Component<Props> {
       let lastChild = getBottomObservableBlock(
         this.contentsRef?.current?.lastChild,
       );
-      const areObservedElementsNew =
-        this.observedElmTop.current !== firstChild ||
-        this.observedElmBottom.current !== lastChild;
+      const isDOMUpdated =
+        oldRefTop !== firstChild || oldRefBottom !== lastChild;
       const shouldLazyLoad = outputBlockIndexes.length > MAX_BLOCKS_TO_DISPLAY;
 
-      console.log(
-        '[f] [scroll] %c componentDidUpdate 2 RECREATE OBSERVERS ON SCROLL, ',
-        'color: #123153',
-        {
-          canObserve: this.canObserve.current,
-          areObservedElementsNew,
-          firstChild,
-          lastChild,
-          contentsRef: this.contentsRef.current,
-          OBSTOP: this.observedElmTop.current,
-          OBSBOTTOM: this.observedElmBottom.current,
-          outputBlockIndexes: outputBlockIndexes,
-        },
-      );
+      // console.log(
+      //   '[f] [scroll] %c componentDidUpdate 2 RECREATE OBSERVERS ON SCROLL, ',
+      //   'color: #123153',
+      //   {
+      //     canObserve: this.canObserve.current,
+      //     isDOMUpdated,
+      //     firstChild,
+      //     lastChild,
+      //     contentsRef: this.contentsRef.current,
+      //     OBSTOP: this.observedElmTop.current,
+      //     OBSBOTTOM: this.observedElmBottom.current,
+      //     outputBlockIndexes: outputBlockIndexes,
+      //   },
+      // );
 
       // TODO: improve performance on state change when we don't need to recalculate lazyBlocks
       // if (this.state.shouldRecalculateLazyLoad) {
@@ -1220,14 +1030,42 @@ class DraftEditorContents extends React.Component<Props> {
       // } else {
       // }
 
+      /*
+       * Calculate blocks offset
+       */
+
+      if (isDOMUpdated) {
+        let topBlocksOffsetHeight = DRAFT_BLOCK_HEIGHT; // Fallback value
+
+        if (!!this.contentsRef?.current?.firstChild) {
+          // getNextSibling(this.contentsRef?.current?.firstChild, 2, elm => {
+            const draftElm = getFirstDraftBlock(this.contentsRef?.current?.firstChild, true);
+
+            if (draftElm) {
+              topBlocksOffsetHeight = draftElm.offsetHeight;
+            }
+
+            // return draftElm;
+          // });
+
+          // console.log('[f] topBlocksOffsetHeight', {topBlocksOffsetHeight})
+
+          this.topBlocksOffsetHeight.current = topBlocksOffsetHeight;
+        }
+      }
+
+      /*
+       * Refresh the observers on scroll
+       */
+
       // Setting the observers
       if (
         this.canObserve.current &&
         shouldLazyLoad &&
         !!this.contentsRef?.current?.lastChild &&
-        areObservedElementsNew
+        isDOMUpdated
       ) {
-        console.log('[f] [scroll] CALLING CREATE OBSERVERS');
+        // console.log('[f] [scroll] CALLING CREATE OBSERVERS');
         this.handleCreateObservers();
       }
     }
@@ -1242,11 +1080,11 @@ class DraftEditorContents extends React.Component<Props> {
     let currentFocusBlockKey = this.state.currentFocusBlockKey;
 
     if (blockKeyToScrollTo !== prevProps.editorState.getBlockKeyToScrollTo()) {
-      console.log(
-        '[f] [draft] %c componentDidUpdate 3 - FOCUS ON BLOCK',
-        'color: #643171',
-        {currentLazyLoad: this.state.currentLazyLoad, blockKeyToScrollTo},
-      );
+      // console.log(
+      //   '[f] [draft] %c componentDidUpdate 3 - FOCUS ON BLOCK',
+      //   'color: #643171',
+      //   {currentLazyLoad: this.state.currentLazyLoad, blockKeyToScrollTo},
+      // );
       if (blockKeyToScrollTo > '') {
         if (blockKeyToScrollTo !== this.state.currentLazyLoad.key) {
           this.handleUnobserve(
@@ -1286,23 +1124,23 @@ class DraftEditorContents extends React.Component<Props> {
       outputBlockIndexes !== prevState.outputBlockIndexes ||
       this.state.currentFocusBlockKey !== prevState.currentFocusBlockKey
     ) {
-      console.log(
-        '[f] [draft] %c componentDidUpdate 4 - FOCUS ON BLOCK AFTER LOADING THE DOM',
-        'color: #123171',
-        {
-          currentLazyLoad: this.state.currentLazyLoad,
-          blockKeyToScrollTo,
-          currentFocusBlockKey,
-          outputBlockIndexes,
-          prevOutputBlockIndexes: prevState.outputBlockIndexes,
-        },
-      );
+      // console.log(
+      //   '[f] [draft] %c componentDidUpdate 4 - FOCUS ON BLOCK AFTER LOADING THE DOM',
+      //   'color: #123171',
+      //   {
+      //     currentLazyLoad: this.state.currentLazyLoad,
+      //     blockKeyToScrollTo,
+      //     currentFocusBlockKey,
+      //     outputBlockIndexes,
+      //     prevOutputBlockIndexes: prevState.outputBlockIndexes,
+      //   },
+      // );
 
       if (
         this.state.currentFocusBlockKey > '' &&
         !!this.getBlockByKey(this.state.currentFocusBlockKey)
       ) {
-        console.log('[f] [draft] ACTUALLY FOCUSING ON BLOCK');
+        // console.log('[f] [draft] ACTUALLY FOCUSING ON BLOCK');
 
         this.handleFocusBlock(this.state.currentFocusBlockKey);
         this.canObserve.current = true;
@@ -1316,10 +1154,10 @@ class DraftEditorContents extends React.Component<Props> {
   }
 
   componentWillUnmount() {
-    console.log('[f] [draft] CLASS componentWillUnmount', {
-      props: this.props,
-      state: this.state,
-    });
+    // console.log('[f] [draft] CLASS componentWillUnmount', {
+    //   props: this.props,
+    //   state: this.state,
+    // });
 
     const scrollElm = this.contentsRef.current.parentElement;
     scrollElm.removeEventListener('scroll', this.handleEditorScroll);
@@ -1361,11 +1199,12 @@ class DraftEditorContents extends React.Component<Props> {
       }
     }
 
-    console.log('[f] [draft] %c [render]  ', 'color: #9999', {
-      lazyLoadBlocks,
-      blocksAsArray,
-      outputBlockIndexes,
-    });
+    // console.log('[f] [draft] %c [render] ', 'color: #9999', {
+    //   lazyLoadBlocks,
+    //   blocksAsArray,
+    //   outputBlockIndexes,
+    //   topBlocksOffsetHeight: this.topBlocksOffsetHeight.current,
+    // });
 
     for (let ii = 0; ii < lazyLoadBlocks.length; ii++) {
       const block = lazyLoadBlocks[ii];
@@ -1508,9 +1347,9 @@ class DraftEditorContents extends React.Component<Props> {
       if (block) {
         outputBlocks.push(block);
         if (ii === processedBlocks.length) {
-          console.log('[f] RENDER - LAST BLOCK - add event listenr to block', {
-            block,
-          });
+          // console.log('[f] RENDER - LAST BLOCK - add event listenr to block', {
+          //   block,
+          // });
         }
       }
     }
