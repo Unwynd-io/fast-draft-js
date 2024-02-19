@@ -69,8 +69,6 @@ const getListItemClasses = (
   });
 };
 
-// TODO: move constants and utils to separate folders
-
 /*
  * Constants
  */
@@ -352,7 +350,6 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
 
   const FIRST_BLOCK = 0;
   const LAST_BLOCK = blocks.length - 1;
-  // TODO: check what should be last block
 
   if (start > FIRST_BLOCK) {
     // console.log('[f] [draft] start > FIRST_BLOCK, adding first block')
@@ -391,8 +388,6 @@ const getLazyLoadedBlockIndexes = ({editorState, blocks: _blocks, initialBlockKe
     // console.log('[f] [draft] loading END selection off screen BELOW')
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
-
-  // TODO: fix last block with sections hidden and last block should be loaded always for ctrl + a
 
   if (end < LAST_BLOCK + 1) {
     // console.log('[f] [draft] end < LAST_BLOCK, loading last block')
@@ -643,7 +638,6 @@ class DraftEditorContents extends React.Component<Props> {
           //   {entry, observer, blockKey, firstChild, lastChild},
           // );
 
-          // TODO: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks)
           /* ^ not sure if this code is the right idea for above.
           const indexOfLazyBlock = lazyLoadBlocks.findIndex(block => block.key === blockKey);
           if(indexOfLazyBlock == -1 || indexOfLazyBlock === 1 || indexOfLazyBlock === lazyLoadBlocks.length - 1) {
@@ -953,17 +947,6 @@ class DraftEditorContents extends React.Component<Props> {
 
         // console.log('[f] [scroll] %c USE LAYOUT EFFECT - CALC INDEXES - AFTER', 'color: #888854', {areIndexesSorted})
 
-        // // TODO: try and leave first and last block in the array
-        // // TODO: earlier lazy loading
-        // // TODO: for selection that is manual start and end => show them in the dom anyway even if they are "unloaded"
-        // // TODO: for scroll to ref - add an initial lazy block key as prop
-
-        // // TODO: fix infinite scrolling (happens only if the observed element is a list element)
-        // TODO: fix issue when deleting a block that is currentLazyLoad? test
-        // TODO: for hidden clauses - refactor clauses
-        // TODO: improve performance on backspace (see why it happens and do not recalulate the indexes unless blockMap changes)
-
-        // TODO: MOVE TO componentDidMount
       } else if (!this.state.currentLazyLoad.key) {
         // console.log('[f] [draft] no lazy load key, only first blocks');
         let lazyLoadBlocks = blocksAsArray.slice(
@@ -1074,8 +1057,6 @@ class DraftEditorContents extends React.Component<Props> {
      * Focus on the block
      */
 
-    // TODO: try to tweak so that there is no need to reset blockKeyToScrollTo from the parent component manually
-
     const blockKeyToScrollTo = this.props.editorState.getBlockKeyToScrollTo();
     let currentFocusBlockKey = this.state.currentFocusBlockKey;
 
@@ -1111,7 +1092,6 @@ class DraftEditorContents extends React.Component<Props> {
         } else {
           // console.log('[f] SHOULD FOCUS ON BLOCK', {currentLazyLoad, props})
           this.handleFocusBlock(blockKeyToScrollTo);
-          // TODO: check collapsed clauses
         }
       }
     }
@@ -1363,5 +1343,15 @@ class DraftEditorContents extends React.Component<Props> {
     );
   }
 }
+
+
+// TODO: test scrollToRef and other use-cases
+// TODO: test this: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks) - what happens if selection is on currentLazyLoad.key block
+// TODO: improve performance on backspace (see why it happens and do not recalulate the indexes unless blockMap changes)
+// TODO: refactor code in this component: move out util methods and constants, remove comments, improve code
+// TODO: try to fix blockKeyToScrollTo (reset in the editor) or add timestamp tracking
+// TODO: style the clauses
+// TODO: move the package to a private repositry
+// TODO: publish private (or public) package
 
 module.exports = DraftEditorContents;
