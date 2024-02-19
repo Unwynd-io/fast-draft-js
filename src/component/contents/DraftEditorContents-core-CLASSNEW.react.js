@@ -1353,5 +1353,7 @@ class DraftEditorContents extends React.Component<Props> {
 // TODO: style the clauses
 // TODO: move the package to a private repositry
 // TODO: publish private (or public) package
+// TODO: look into tooltips and editor preview
+// TODO: (optional) try to implement our own scrollbar
 
 module.exports = DraftEditorContents;
