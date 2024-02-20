@@ -333,8 +333,10 @@ class DraftEditorContents extends React.Component<Props> {
     const nextDecorator = nextEditorState.getDecorator();
     const prevSelection = prevEditorState.getSelection();
     const nextSelection = nextEditorState.getSelection();
-    const prevFocusKey = prevEditorState.getBlockKeyToScrollTo();
-    const nextFocusKey = nextEditorState.getBlockKeyToScrollTo();
+
+    const prevScrollTo = prevEditorState.getBlockToScrollTo();
+    const nextScrollTo = nextEditorState.getBlockToScrollTo();
+    const scrollKeyChanged = (prevScrollTo?.get?.('key') !== nextScrollTo?.get?.('key') || prevScrollTo?.get?.('timestamp') !== nextScrollTo?.get?.('timestamp'));
 
     return (
       wasComposing !== nowComposing ||
@@ -343,7 +345,7 @@ class DraftEditorContents extends React.Component<Props> {
       nextEditorState.mustForceSelection() ||
       stateChanged ||
       prevSelection !== nextSelection ||
-      prevFocusKey !== nextFocusKey
+      scrollKeyChanged
     );
   }
 
@@ -408,10 +410,16 @@ class DraftEditorContents extends React.Component<Props> {
      * Mark the focus block as the lazy load block
      */
 
-    const blockKeyToScrollTo = this.props.editorState.getBlockKeyToScrollTo();
 
-    if (blockKeyToScrollTo !== prevProps.editorState.getBlockKeyToScrollTo()) {
+    const prevBlockScrollTo = prevProps.editorState.getBlockToScrollTo()
+    const nextBlockScrollTo = this.props.editorState.getBlockToScrollTo()
+    const newKeyToScrollTo = (prevBlockScrollTo?.get?.('key') !== nextBlockScrollTo?.get?.('key') || prevBlockScrollTo?.get?.('timestamp') !== nextBlockScrollTo?.get?.('timestamp'));
+
+    if (newKeyToScrollTo) {
+      const blockKeyToScrollTo = nextBlockScrollTo?.get?.('key');
+      const blockTimestampToScrollTo = nextBlockScrollTo?.get?.('timestamp');
       // console.log('[didMount] 3 blockKeyToScrollTo changed', {blockKeyToScrollTo, prevBlockKeyToScrollTo: prevProps.editorState.getBlockKeyToScrollTo()})
+      
       if (blockKeyToScrollTo > '') {
         if (blockKeyToScrollTo !== currentLazyLoad.key) {
           // console.log('[scroll] %c focusing on block 1 - block key props !== currentLazyLoad.key - setting new focus block key', 'color: #677897')
@@ -427,7 +435,7 @@ class DraftEditorContents extends React.Component<Props> {
           this.canObserve.current = false;
 
           currentFocusBlockKey = blockKeyToScrollTo;
-          currentLazyLoad = {key: blockKeyToScrollTo, direction: 'FOCUS'};
+          currentLazyLoad = {key: blockKeyToScrollTo, timestamp: blockTimestampToScrollTo, direction: 'FOCUS'};
           
         } else {
           // console.log('[scroll] focusing on block 2 - block key props === currentLazyLoad.key')
@@ -794,14 +802,12 @@ class DraftEditorContents extends React.Component<Props> {
     );
   }
 }
-
-
 // // TODO: refactor code in this component: move out util methods and constants, remove comments, improve code
+// // TODO: try to fix blockKeyToScrollTo (reset in the editor) or add timestamp tracking
+// //  TODO: look into tooltips and editor preview
 
 // !! Alex: 
-// TODO: look into tooltips and editor preview
 // TODO: improve performance on backspace (see why it happens and do not recalulate the indexes unless blockMap changes)
-// TODO: try to fix blockKeyToScrollTo (reset in the editor) or add timestamp tracking
 
 // !! Yurii
 // // TODO: test scrollToRef and other use-cases

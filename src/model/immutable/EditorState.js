@@ -33,7 +33,7 @@ const {OrderedSet, Record, Stack, OrderedMap, List} = Immutable;
 // (See the types defined below.)
 type BaseEditorStateConfig = {
   allowUndo?: boolean,
-  blockKeyToScrollTo?: ?string,
+  blockKeyToScrollTo?: ?{key: String, timestamp: number},
   decorator?: ?DraftDecoratorType,
   directionMap?: ?OrderedMap<string, string>,
   forceSelection?: boolean,
@@ -49,7 +49,7 @@ type BaseEditorStateConfig = {
 
 type BaseEditorStateRawConfig = {
   allowUndo?: boolean,
-  blockKeyToScrollTo?: ?string,
+  blockKeyToScrollTo?: ?{key: String, timestamp: number},
   decorator?: ?DraftDecoratorType,
   directionMap?: ?{...},
   forceSelection?: boolean,
@@ -83,7 +83,7 @@ type EditorStateChangeConfigType = {
 type EditorStateRecordType = {
   allowUndo: boolean,
   currentContent: ?ContentState,
-  blockKeyToScrollTo: ?string,
+  blockKeyToScrollTo: ?{key: String, timestamp: number},
   decorator: ?DraftDecoratorType,
   directionMap: ?OrderedMap<string, string>,
   forceSelection: boolean,
@@ -101,7 +101,7 @@ type EditorStateRecordType = {
 const defaultRecord: EditorStateRecordType = {
   allowUndo: true,
   currentContent: null,
-  blockKeyToScrollTo: null,
+  blockKeyToScrollTo: {key: null, timestamp: null},
   decorator: null,
   directionMap: null,
   forceSelection: false,
@@ -282,7 +282,7 @@ class EditorState {
     return this.getImmutable().get('selection');
   }
 
-  getBlockKeyToScrollTo(): ?string {
+  getBlockToScrollTo(): ?string {
     return this.getImmutable().get('blockKeyToScrollTo');
   }
 
@@ -378,6 +378,7 @@ class EditorState {
     return updateBlockKeyToScrollTo(editorState, blockKey);
   }
 
+  // ! This can go, i think.
   static resetFocus(
     editorState: EditorState,
   ): EditorState {
@@ -625,7 +626,7 @@ function updateBlockKeyToScrollTo(
   blockKey: ?string,
 ): EditorState {
   return EditorState.set(editorState, {
-    blockKeyToScrollTo: blockKey
+    blockKeyToScrollTo: {key: blockKey, timestamp: +new Date()}
   });
 }
 
