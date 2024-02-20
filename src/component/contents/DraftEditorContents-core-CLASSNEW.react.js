@@ -189,11 +189,11 @@ class DraftEditorContents extends React.Component<Props> {
     ) {
       const currentScroll = this.contentsRef.current.parentElement.scrollTop;
       newScrollPosition = currentScroll + (newRects.top - oldRects.top);
-      console.log('[scroll] new scroll position!', {newScrollPosition, currentScroll, oldRects, newRects})
+      // console.log('[scroll] new scroll position!', {newScrollPosition, currentScroll, oldRects, newRects})
     }
 
     if (newScrollPosition) {
-      console.log('[scroll] UPDATING SCROLL POSITION', newScrollPosition, 'px');
+      // console.log('[scroll] UPDATING SCROLL POSITION', newScrollPosition, 'px');
       const scrollElm = this.contentsRef.current.parentElement;
       scrollElm.scrollTop = newScrollPosition;
     }
@@ -323,7 +323,7 @@ class DraftEditorContents extends React.Component<Props> {
           nextEditorState.getCurrentContent() === nextNativeContent) ||
         (wasComposing && nowComposing))
     ) {
-      // console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
+      console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
       return false;
     }
 
@@ -411,10 +411,10 @@ class DraftEditorContents extends React.Component<Props> {
     const blockKeyToScrollTo = this.props.editorState.getBlockKeyToScrollTo();
 
     if (blockKeyToScrollTo !== prevProps.editorState.getBlockKeyToScrollTo()) {
-      console.log('[didMount] 3 blockKeyToScrollTo changed', {blockKeyToScrollTo, prevBlockKeyToScrollTo: prevProps.editorState.getBlockKeyToScrollTo()})
+      // console.log('[didMount] 3 blockKeyToScrollTo changed', {blockKeyToScrollTo, prevBlockKeyToScrollTo: prevProps.editorState.getBlockKeyToScrollTo()})
       if (blockKeyToScrollTo > '') {
         if (blockKeyToScrollTo !== currentLazyLoad.key) {
-          console.log('[scroll] %c focusing on block 1 - block key props !== currentLazyLoad.key - setting new focus block key', 'color: #677897')
+          // console.log('[scroll] %c focusing on block 1 - block key props !== currentLazyLoad.key - setting new focus block key', 'color: #677897')
           this.handleUnobserve(
             this.observerLazyTop.current,
             this.observedElmTop.current,
@@ -430,7 +430,7 @@ class DraftEditorContents extends React.Component<Props> {
           currentLazyLoad = {key: blockKeyToScrollTo, direction: 'FOCUS'};
           
         } else {
-          console.log('[scroll] focusing on block 2 - block key props === currentLazyLoad.key')
+          // console.log('[scroll] focusing on block 2 - block key props === currentLazyLoad.key')
           this.handleFocusBlock(blockKeyToScrollTo);
         }
       }
@@ -444,7 +444,7 @@ class DraftEditorContents extends React.Component<Props> {
       prevProps.editorState !== this.props.editorState ||
       prevState.currentLazyLoad.key !== currentLazyLoad.key
     ) {
-      console.log('[didMount] 1 calculating indexes to render ')
+      // console.log('[didMount] 1 calculating indexes to render ')
       const blocksAsArray = this.props.editorState
         .getCurrentContent()
         .getBlocksAsArray();
@@ -452,7 +452,7 @@ class DraftEditorContents extends React.Component<Props> {
       let areIndexesSorted = false;
 
       if (currentLazyLoad.key > '') {
-        console.log('[calc] calculating indexes to render 1 - lazy load key', {key: currentLazyLoad.key})
+        // console.log('[calc] calculating indexes to render 1 - lazy load key', {key: currentLazyLoad.key})
 
         outputBlockIndexes = getLazyLoadedBlockIndexes({
           editorState: this.props.editorState,
@@ -467,7 +467,7 @@ class DraftEditorContents extends React.Component<Props> {
           .slice(0, MAX_SLICE_TO_CHECK)
           .every((val, i, arr) => !i || arr[i - 1] === arr[i] - 1);
       } else if (!currentLazyLoad.key) {
-        console.log('[calc] calculating indexes to render 2 - no lazy load key')
+        // console.log('[calc] calculating indexes to render 2 - no lazy load key')
         let lazyLoadBlocks = blocksAsArray.slice(
           0,
           MAX_BLOCKS_TO_DISPLAY,
@@ -488,7 +488,7 @@ class DraftEditorContents extends React.Component<Props> {
      */
 
     if (prevState.outputBlockIndexes !== outputBlockIndexes) {
-      console.log('[didMount] 2 blocks are different')
+      // console.log('[didMount] 2 blocks are different')
       const oldRefTop = this.observedElmTop.current;
       const oldRefBottom = this.observedElmBottom.current;
 
@@ -520,21 +520,21 @@ class DraftEditorContents extends React.Component<Props> {
         }
       }
 
-      console.log('[dom] is updated: ', {isDOMUpdated})
+      // console.log('[dom] is updated: ', {isDOMUpdated})
 
       
       /*
        * Focus on the block after loading the DOM
        */
 
-      console.log('[focus] BEFORE checking if we should focus on block', {outputBlockIndexes, prevOutputBlockIndexes: prevState.outputBlockIndexes, currentFocusBlockKey: currentFocusBlockKey, prevFocusBlockKey: prevState.currentFocusBlockKey})
+      // console.log('[focus] BEFORE checking if we should focus on block', {outputBlockIndexes, prevOutputBlockIndexes: prevState.outputBlockIndexes, currentFocusBlockKey: currentFocusBlockKey, prevFocusBlockKey: prevState.currentFocusBlockKey})
       if (currentFocusBlockKey !== prevState.currentFocusBlockKey) {
         if (
           currentFocusBlockKey > '' &&
           isDOMUpdated &&
           !!getBlockByKey(currentFocusBlockKey)
         ) {
-          console.log('[focus] %c actually focusing on block AFTER loading DOM, block exists', 'color: #733142')
+          // console.log('[focus] %c actually focusing on block AFTER loading DOM, block exists', 'color: #733142')
           this.handleFocusBlock(currentFocusBlockKey);
           this.canObserve.current = true;
 
@@ -552,7 +552,7 @@ class DraftEditorContents extends React.Component<Props> {
         !!this.contentsRef?.current?.lastChild &&
         isDOMUpdated
       ) {
-        console.log('[obs] refreshing observers')
+        // console.log('[obs] refreshing observers')
         this.handleCreateObservers();
       }
     }
@@ -565,12 +565,12 @@ class DraftEditorContents extends React.Component<Props> {
     //   outputBlockIndexes !== prevState.outputBlockIndexes ||
     //   this.state.currentFocusBlockKey !== prevState.currentFocusBlockKey
     // ) {
-    //   console.log('[didMount] 4 checking if we should focus on block', {outputBlockIndexes, prevOutputBlockIndexes: prevState.outputBlockIndexes, currentFocusBlockKey: this.state.currentFocusBlockKey, prevFocusBlockKey: prevState.currentFocusBlockKey})
+      // console.log('[didMount] 4 checking if we should focus on block', {outputBlockIndexes, prevOutputBlockIndexes: prevState.outputBlockIndexes, currentFocusBlockKey: this.state.currentFocusBlockKey, prevFocusBlockKey: prevState.currentFocusBlockKey})
     //   if (
     //     this.state.currentFocusBlockKey > '' &&
     //     !!getBlockByKey(this.state.currentFocusBlockKey)
     //   ) {
-    //     console.log('[scroll] actually focusing on block AFTER loading DOM, block exists')
+        // console.log('[scroll] actually focusing on block AFTER loading DOM, block exists')
     //     this.handleFocusBlock(this.state.currentFocusBlockKey);
     //     this.canObserve.current = true;
     //     this.handleCreateObservers();
@@ -590,16 +590,16 @@ class DraftEditorContents extends React.Component<Props> {
       currentFocusBlockKey !== this.state.currentFocusBlockKey ||
       currentLazyLoad !== this.state.currentLazyLoad
       ) {
-      console.log('[didMount] updating new state', {
-        isNewOutputBlockIndexes: outputBlockIndexes !== this.state.outputBlockIndexes,
-        isNewCurrentFocusBlockKey: currentFocusBlockKey !== this.state.currentFocusBlockKey,
-        isNewCurrentLazyLoad: currentLazyLoad !== this.state.currentLazyLoad,
-        newState: {
-          outputBlockIndexes,
-          currentFocusBlockKey,
-          currentLazyLoad,
-        }
-      })
+      // console.log('[didMount] updating new state', {
+      //   isNewOutputBlockIndexes: outputBlockIndexes !== this.state.outputBlockIndexes,
+      //   isNewCurrentFocusBlockKey: currentFocusBlockKey !== this.state.currentFocusBlockKey,
+      //   isNewCurrentLazyLoad: currentLazyLoad !== this.state.currentLazyLoad,
+      //   newState: {
+      //     outputBlockIndexes,
+      //     currentFocusBlockKey,
+      //     currentLazyLoad,
+      //   }
+      // })
       this.setState({
         outputBlockIndexes,
         currentFocusBlockKey,
@@ -805,6 +805,7 @@ class DraftEditorContents extends React.Component<Props> {
 
 // !! Yurii
 // // TODO: test scrollToRef and other use-cases
+// // TODO: fix selection off-screen
 // TODO: test this: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks) - what happens if selection is on currentLazyLoad.key block
 
 // TODO: style the clauses
