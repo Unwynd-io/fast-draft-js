@@ -323,7 +323,7 @@ class DraftEditorContents extends React.Component<Props> {
           nextEditorState.getCurrentContent() === nextNativeContent) ||
         (wasComposing && nowComposing))
     ) {
-      console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
+      // console.log('[f] RETURNING FALSE 1', {wasComposing, nowComposing});
       return false;
     }
 
@@ -795,8 +795,6 @@ class DraftEditorContents extends React.Component<Props> {
       }
     }
     
-    console.log('[render] observerElmTop', {topKey: this.observedElmTop.current?.dataset?.offsetKey, bottomKey: this.observedElmBottom.current?.dataset?.offsetKey, top: this.observedElmTop.current, bottom: this.observedElmBottom.current})
-
     return (
       <div data-contents="true" ref={this.contentsRef}>
         {outputBlocks}
@@ -814,7 +812,7 @@ class DraftEditorContents extends React.Component<Props> {
 // !! Yurii
 // // TODO: test scrollToRef and other use-cases
 // // TODO: fix selection off-screen
-// TODO: test this: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks) - what happens if selection is on currentLazyLoad.key block
+// ?? TODO: test this: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks) - what happens if selection is on currentLazyLoad.key block
 
 // TODO: style the clauses
 // TODO: move the package to a private repositry
