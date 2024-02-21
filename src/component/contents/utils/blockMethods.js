@@ -3,13 +3,14 @@ function isElementList (element) {
   return ['OL', 'UL'].includes(element.tagName);
 }
 
-function getElementWrapper (element) {
-  return element.parentElement.parentElement;
-}
+// function getElementWrapper (element) {
+//   return element;
+// }
 
 function isElementWrapped (element) {
-  const wrapper = getElementWrapper(element);
-  return wrapper.getAttribute('number-list-element') === 'true' || wrapper.getAttribute('ordered-list-element') === 'true';
+  // const wrapper = getElementWrapper(element);
+  return element.tagName === 'LI'; 
+  // wrapper.contains('public-DraftStyleDefault-orderedListItem'); // wrapper.getAttribute('number-list-element') === 'true' || wrapper.getAttribute('ordered-list-element') === 'true';
 }
 
 export function getPreviousSibling (element, count, callback) {
@@ -26,14 +27,14 @@ export function getPreviousSibling (element, count, callback) {
 
   if (!newElement.previousSibling) {
 
-    const wrapperElement = getElementWrapper(newElement);
+    // const wrapperElement = getElementWrapper(newElement);
 
     // Case for the list elements
     if (isElementWrapped(newElement)) {
-      if (wrapperElement.previousSibling) {
-        return getPreviousSibling(wrapperElement.previousSibling, count - 1, callback);
-      } else if (isElementList(wrapperElement.parentElement) && wrapperElement.parentElement.previousSibling) {
-        return getPreviousSibling(wrapperElement.parentElement.previousSibling, count - 1, callback);
+      if (newElement.previousSibling) {
+        return getPreviousSibling(newElement.previousSibling, count - 1, callback);
+      } else if (isElementList(newElement.parentElement) && newElement.parentElement.previousSibling) {
+        return getPreviousSibling(newElement.parentElement.previousSibling, count - 1, callback);
       }
     }
 
@@ -57,14 +58,13 @@ export function getNextSibling (element, count, callback) {
   
   if (!newElement.nextSibling) {
     
-    const wrapperElement = getElementWrapper(newElement);
-
+    // const wrapperElement = getElementWrapper(newElement);
     // Case for the list elements
     if (isElementWrapped(newElement)) {
-      if (wrapperElement.nextSibling) {
-        return getNextSibling(wrapperElement.nextSibling, count - 1, callback);
-      } else if (isElementList(wrapperElement.parentElement) && wrapperElement.parentElement.nextSibling) {
-        return getNextSibling(wrapperElement.parentElement.nextSibling, count - 1, callback);
+      if (newElement.nextSibling) {
+        return getNextSibling(newElement.nextSibling, count - 1, callback);
+      } else if (isElementList(newElement.parentElement) && newElement.parentElement.nextSibling) {
+        return getNextSibling(newElement.parentElement.nextSibling, count - 1, callback);
       }
     }
 

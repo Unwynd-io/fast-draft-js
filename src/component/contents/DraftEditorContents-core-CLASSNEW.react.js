@@ -814,7 +814,7 @@ class DraftEditorContents extends React.Component<Props> {
 // // TODO: fix selection off-screen
 // ?? TODO: test this: only set the currentLazyLoad to the block that's inside the lazy loaded blocks (no selection or first/last blocks) - what happens if selection is on currentLazyLoad.key block
 
-// TODO: style the clauses
+// // TODO: style the clauses
 // TODO: move the package to a private repositry
 // TODO: publish private (or public) package
 // TODO: (optional) try to implement our own scrollbar
