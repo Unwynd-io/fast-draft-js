@@ -795,6 +795,8 @@ class DraftEditorContents extends React.Component<Props> {
       }
     }
     
+    console.log('[render] observerElmTop', {topKey: this.observedElmTop.current?.dataset?.offsetKey, bottomKey: this.observedElmBottom.current?.dataset?.offsetKey, top: this.observedElmTop.current, bottom: this.observedElmBottom.current})
+
     return (
       <div data-contents="true" ref={this.contentsRef}>
         {outputBlocks}
