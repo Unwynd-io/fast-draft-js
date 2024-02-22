@@ -13,19 +13,6 @@ function mapFilteredBlock (block, {index, isSection, hidden}) {
 
 function getLazyLoadedBlockIndexes ({editorState, blocks: _blocks, initialBlockKey}) {
 
-  // console.log('[lazy] %c getLazyLoadedBlockIndexes', 'color: orange;', {editorState,
-  //   selectionPlain: {
-  //     anchorKey: editorState.getSelection().getAnchorKey(),
-  //     focusKey: editorState.getSelection().getFocusKey(),
-  //     anchorOffset: editorState.getSelection().getAnchorOffset(),
-  //     focusOffset: editorState.getSelection().getFocusOffset(),
-  //     isBackward: editorState.getSelection().getIsBackward(),
-  //     startKEy: editorState.getSelection().getStartKey(),
-  //     endKey: editorState.getSelection().getEndKey(),
-  //   },
-  //   selectionJS: editorState.getSelection().toJS(),
-  //   selectionSER: editorState.getSelection().serialize(), _blocks, initialBlockKey})
-
   /*
    * Handle sections - remove blocks that are inside collapsed sections, handle last block
    */
@@ -68,11 +55,9 @@ function getLazyLoadedBlockIndexes ({editorState, blocks: _blocks, initialBlockK
   if (lastOriginalBlock.getKey() !== lastFilteredBlock.getKey()) {
     const blockType = lastOriginalBlock.getType();
     const block = mapFilteredBlock(lastOriginalBlock, {index: _blocks.length - 1, isSection: blockType === 'ordered-list-item', hidden: true});
-    // console.log('[lazy] LAST BLOCK IS HIDDEN - ', {blockMapped: block, lastOriginalBlock, lastFilteredBlock, blocks})
     blocks.push(block)
   }
 
-  // console.log('[lazy] filtered blocks', {blocks})
 
   let lazyLoadBlockIndexes = []; // Only the original indexes from the blockMap should be pushed 
 
@@ -112,13 +97,10 @@ function getLazyLoadedBlockIndexes ({editorState, blocks: _blocks, initialBlockK
       start = FIRST_BLOCK;
     }
   }
-  // console.log('[lazy] start/end: ', {start, end,})
 
   const startIndexOriginal = blocks[start].originalIndex;
   const endIndexOriginal = blocks[end].originalIndex;
 
-  // console.log('[lazy] data: ', {start, end, startIndexOriginal, endIndexOriginal, lazyLoadBlockIndex,})
-  // console.log('[lazy] selection data: ', { startOffsetBlockIndex, endOffsetBlockIndex, startOffsetBlockIndex, endOffsetBlockIndex, startSelectionExists, endSelectionExists })
 
   /*
    * Map the lazy blocks
@@ -126,20 +108,17 @@ function getLazyLoadedBlockIndexes ({editorState, blocks: _blocks, initialBlockK
 
 
   if (start > FIRST_BLOCK) {
-    // console.log('[lazy] %c pushing first block', 'color: #952162', {start, FIRST_BLOCK, indexPUSHED: FIRST_BLOCK});
     lazyLoadBlockIndexes.push(FIRST_BLOCK);
   }
 
   // Start selection off screen (ABOVE)
   if (startSelectionExists && (startOffsetBlockIndex < startIndexOriginal && startOffsetBlockIndex !== FIRST_BLOCK)) {
-    // console.log('[lazy] %c Start selection off screen (ABOVE)', 'color: #952162', { startOffsetBlockIndexPUSHED: startOffsetBlockIndex, startOffsetBlockIndex, start, FIRST_BLOCK});
     lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
   // End selection off screen (ABOVE)
   if (endSelectionExists && ((endOffsetBlockIndex < startIndexOriginal && endOffsetBlockIndex !== FIRST_BLOCK)
     && endOffsetBlockIndex !== startOffsetBlockIndex)) {
-    // console.log('[lazy] %c End selection off screen (ABOVE)', 'color: #952162', { endOffsetBlockIndexPUSHED: endOffsetBlockIndex, endOffsetBlockIndex, startOffsetBlockIndex, start, FIRST_BLOCK});
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
@@ -152,11 +131,9 @@ function getLazyLoadedBlockIndexes ({editorState, blocks: _blocks, initialBlockK
     tempBlocks.push(block.originalIndex);
   }
 
-  // console.log('[lazy] %c pushed regular blocks', {tempBlocks})
 
   // Start selection off screen (BELOW)
   if (startSelectionExists && (startOffsetBlockIndex > endIndexOriginal && startOffsetBlockIndex !== LAST_BLOCK)) {
-    // console.log('[lazy] %c Start selection off screen (BELOW)', 'color: #952162', { startOffsetBlockIndexPUSHED: startOffsetBlockIndex, startOffsetBlockIndex, end, LAST_BLOCK})
     lazyLoadBlockIndexes.push(startOffsetBlockIndex);
   }
 
@@ -164,17 +141,14 @@ function getLazyLoadedBlockIndexes ({editorState, blocks: _blocks, initialBlockK
   if (endSelectionExists &&  ((endOffsetBlockIndex > endIndexOriginal && endOffsetBlockIndex !== LAST_BLOCK)
     && endOffsetBlockIndex !== startOffsetBlockIndex)) {
 
-    // console.log('[lazy] %c End selection off screen (BELOW)', 'color: #952162', { endOffsetBlockIndexPUSHED: endOffsetBlockIndex, endOffsetBlockIndex, startOffsetBlockIndex, end, LAST_BLOCK})
 
     lazyLoadBlockIndexes.push(endOffsetBlockIndex);
   }
 
   if (end < LAST_BLOCK) {
-    // console.log('[lazy] %c pushing last block', 'color: #952162', {end, LAST_BLOCK, indexPUSHED: _blocks.length - 1});
     lazyLoadBlockIndexes.push(_blocks.length - 1);
   }
 
-  // console.log('------------------')
 
   return lazyLoadBlockIndexes;
 }
